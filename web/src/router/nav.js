@@ -3,7 +3,7 @@ export default [
     component: 'CNavItem',
     name: 'Dashboard',
     to: '/dashboard',
-    icon: 'cil-speedometer',
+    icon: 'cil-apps',
     badge: {
       color: 'primary',
       text: 'NEW',
@@ -17,25 +17,25 @@ export default [
     component: 'CNavItem',
     name: 'Nodes',
     to: '/nodes',
-    icon: 'cil-rss',
+    icon: 'cil-sitemap',
   },
   {
     component: 'CNavItem',
     name: 'Raw frame',
     to: '/rawframe',
-    icon: 'cil-rss',
+    icon: 'cil-beaker',
   },
   {
     component: 'CNavItem',
     name: 'Stats',
     to: '/stats',
-    icon: 'cil-rss',
+    icon: 'cil-avTimer',
   },
   {
     component: 'CNavItem',
     name: 'Settings',
     to: '/settings',
-    icon: 'cil-rss',
+    icon: 'cil-settings',
   },
   // {
   //   component: 'CNavTitle',
