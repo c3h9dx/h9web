@@ -90,7 +90,8 @@ class Worker(object):
             #logging.debug('{}'.format(js))
             #logging.debug('{}'.format(data.decode('utf-8')))
             try:
-                self.handler.write_message(js, binary=False)
+                # self.handler.write_message(js, binary=False)
+                self.handler.write_message(data, binary=True)
             except tornado.websocket.WebSocketClosedError:
                 self.close(reason='websocket closed')
 
