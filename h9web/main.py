@@ -19,7 +19,7 @@ from h9web.dashboard import Dashboard
 
 class Application(tornado.web.Application):
     def __init__(self, options, h9d_int, loop):
-        vue_path = os.path.join(os.path.dirname(__file__), '../../web/dist')
+        vue_path = os.path.join(os.path.dirname(__file__), '../web/dist')
         handlers = [
             (r'/api/login', LoginHandler),
             (r'/api/logout', LoginHandler),
@@ -48,7 +48,7 @@ class Application(tornado.web.Application):
         ]
         settings = dict(
             template_path=os.path.join(os.path.dirname(__file__), 'templates'),
-            static_path=os.path.join(os.path.dirname(__file__), 'static'),
+            static_path=vue_path,
             login_url='/login',
             cookie_secret='__TODO:_GENERATE_YOUR_OWN_RANDOM_VALUE_HERE__',
             websocket_ping_interval=options.wpintvl,

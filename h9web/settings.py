@@ -25,7 +25,7 @@ define('wpintvl', type=int, default=0, help='Websocket ping interval')
 define('xsrf', type=bool, default=True, help='CSRF protection')
 define('dev', type=bool, default=False, help='Enable development mode: enable cross-origin resource sharing (CORS), disable CSRF protection')
 define('version', type=bool, help='Show version information', callback=print_version)
-define('cli', default='/bin/bash', help='CLI path')
+define('cli', default='/usr/local/bin/h9cli', help='CLI path')
 define('h9daddress', default='127.0.0.1', help='H9d address')
 define('h9dport', type=int, default='7979', help='H9d port')
 
