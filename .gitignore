@@ -1,4 +1,35 @@
 __pycache__/
-.idea/
 venv/
 *.pyc
+
+# OS or Editor folders
+._*
+.cache
+.DS_Store
+.idea
+.vscode
+.project
+.settings
+.tmproj
+*.esproj
+*.sublime-project
+*.sublime-workspace
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+nbproject
+Thumbs.db
+
+# Numerous always-ignore extensions
+*.diff
+*.err
+*.log
+*.orig
+*.rej
+*.swo
+*.swp
+*.vi
+*.zip
+*~
