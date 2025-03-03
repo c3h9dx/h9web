@@ -1,5 +1,8 @@
 __pycache__/
+build/
+dist/
 venv/
+h9web.egg-info/
 *.pyc
 
 # OS or Editor folders
