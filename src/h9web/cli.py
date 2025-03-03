@@ -10,21 +10,24 @@ import termios
 from tornado.ioloop import IOLoop
 from json.decoder import JSONDecodeError
 from h9web.worker import Worker
-from h9web.handler import CommonHandler
 
 
-class CliWSHandler(tornado.websocket.WebSocketHandler, CommonHandler):
+class CliWSHandler(tornado.websocket.WebSocketHandler):
     def initialize(self, loop):
         self.loop = loop
         self.worker_ref = None
         self.cli = self.settings['cli']
 
+    def get_current_user(self):
+        #TODO: add expired date
+        return self.get_signed_cookie(self.AUTH_COOKIE)
+
+    def get_client_addr(self) -> (str, int):
+        #TODO: add support for X-Headers
+        return self.request.connection.context.address[:2]
+
     def check_origin(self, origin):
         return True
-
-
-    def get_current_user(self):
-        return "kfh" #self.get_secure_cookie("authenticated")
 
     def prepare(self):
         pass
@@ -63,23 +66,25 @@ class CliWSHandler(tornado.websocket.WebSocketHandler, CommonHandler):
     def on_message(self, message):
         logging.debug('{!r} from {}:{}'.format(message, *self.src_addr))
         worker = self.worker_ref()
-        try:
-            msg = json.loads(message)
-        except JSONDecodeError:
-            return
-
-        if not isinstance(msg, dict):
-            return
-
-        resize = msg.get('resize')
-        if resize and len(resize) == 2:
-            winsize = struct.pack("HHHH", resize[1], resize[0], 0, 0)
-            fcntl.ioctl(worker.fd, termios.TIOCSWINSZ, winsize)
-
-        data = msg.get('data')
-        if data and isinstance(data, str):
-            worker.data_to_dst.append(data)
-            worker.on_write()
+        worker.data_to_dst.append(message)
+        worker.on_write()
+        # try:
+        #     msg = json.loads(message)
+        # except JSONDecodeError:
+        #     return
+        #
+        # if not isinstance(msg, dict):
+        #     return
+        #
+        # resize = msg.get('resize')
+        # if resize and len(resize) == 2:
+        #     winsize = struct.pack("HHHH", resize[1], resize[0], 0, 0)
+        #     fcntl.ioctl(worker.fd, termios.TIOCSWINSZ, winsize)
+        #
+        # data = msg.get('data')
+        # if data and isinstance(data, str):
+        #     worker.data_to_dst.append(data)
+        #     worker.on_write()
 
     def on_close(self):
         logging.info('Disconnected from {}:{}'.format(*self.src_addr))

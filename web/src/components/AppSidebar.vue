@@ -1,8 +1,8 @@
 <script setup>
 import { RouterLink } from 'vue-router'
 
-// import { logo } from '@/assets/brand/logo'
-// import { sygnet } from '@/assets/brand/sygnet'
+import { logo } from '@/assets/logo'
+import { sygnet } from '@/assets/sygnet'
 import { AppSidebarNav } from '@/components/AppSidebarNav.js'
 import { useSidebarStore } from '@/stores/sidebar.js'
 

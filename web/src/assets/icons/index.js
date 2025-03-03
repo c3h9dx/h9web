@@ -8,6 +8,11 @@ import {
     cilTerminal,
     cilSun,
     cilMoon,
+    cilLoopCircular,
+    cilSearch,
+    cilXCircle,
+    cilMemory,
+    cilAccountLogout,
 
     cibFacebook,
     cibTwitter,
@@ -71,7 +76,6 @@ import {
     cilList,
     cilLocationPin,
     cilLockLocked,
-    cilMagnifyingGlass,
     cilMediaPlay,
     cilNotes,
     cilOptions,
@@ -86,7 +90,6 @@ import {
     cilUser,
     cilUserFemale,
     cilUserFollow,
-    cilXCircle,
 } from '@coreui/icons'
 
 export const iconsSet = Object.assign(
@@ -101,6 +104,11 @@ export const iconsSet = Object.assign(
         cilTerminal,
         cilMoon,
         cilSun,
+        cilLoopCircular,
+        cilSearch,
+        cilXCircle,
+        cilMemory,
+        cilAccountLogout,
 
         cilArrowBottom,
         cilArrowRight,
@@ -136,7 +144,6 @@ export const iconsSet = Object.assign(
         cilList,
         cilLocationPin,
         cilLockLocked,
-        cilMagnifyingGlass,
         cilMediaPlay,
         cilNotes,
         cilOptions,
@@ -151,7 +158,6 @@ export const iconsSet = Object.assign(
         cilUser,
         cilUserFemale,
         cilUserFollow,
-        cilXCircle,
     },
     {
         cifUs,

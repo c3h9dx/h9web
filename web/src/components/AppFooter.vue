@@ -4,8 +4,8 @@
   </CFooter>
 </template>
 <script>
-import XtermVue from "@/components/XtermVue.vue";
+
 export default {
-  components: {XtermVue}
+  components: {}
 }
 </script>
