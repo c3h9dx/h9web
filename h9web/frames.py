@@ -19,7 +19,8 @@ class Frames(APIHandler):
             frame = tmp['frame']
             logging.debug(tmp)
 
-            frame["priority"] = "H" if frame["priority"] == 0 else "L"
+            # Unicast (type < 16) carries flags/destination_id/seqnum, broadcast carries broadcast_group;
+            # h9d reads only the keys that are present, so the frame is passed through as-is.
             frame["data"] = frame["data"][:frame["dlc"]]
 
             try:

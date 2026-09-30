@@ -49,7 +49,7 @@ export default {
 
 <style scoped>
 .xterm {
-//display: block;
+  /* display: block; */
   height: 100%;
   width: 100%;
 }

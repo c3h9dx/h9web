@@ -135,12 +135,21 @@ function isBitSet(reg, bit) {
   return reg & (1 << bit)
 }
 
-function handleBitChange(reg, bit, value) {
-  if (value) {
-    reg.val |= (1 << bit);
-  } else {
-    reg.val &= ~(1 << bit);
-  }
+async function handleBitChange(node_id, reg, bit, event) {
+  const value = event.target.checked
+  await axios({
+    method: value ? 'put' : 'delete',
+    url: '/api/node/' + node_id + '/reg/' + reg.number + '/bit/' + bit,
+  }).then(async () => {
+    // h9d answers set/clear bit with raw bytes, so read the value back in the same form as Get
+    await registerRead(node_id, reg)
+  }).catch(function (error) {
+    event.target.checked = !value  // reg.val is unchanged, so restore the button by hand
+    toasts.value.push({
+      title: value ? 'Node set bit' : 'Node clear bit',
+      content: error
+    })
+  })
 }
 
 </script>
@@ -251,10 +260,11 @@ function handleBitChange(reg, bit, value) {
                 <CButtonGroup size="sm">
                   <CFormCheck
                       :button="{color: 'primary', variant: 'outline'}"
-                      :id="'bit_' + index"
+                      :id="'node_' + selected_device.id + '_reg_' + reg.number + '_bit_' + index"
                       :label="bit"
                       :text="bit"
-                      @change="(event) => handleBitChange(reg, reg.bits_names.length - 1 - index, event.target.checked)"
+                      :disabled="!reg.writable"
+                      @change="(event) => handleBitChange(selected_device.id, reg, reg.bits_names.length - 1 - index, event)"
                       :checked="isBitSet(reg.val, reg.bits_names.length - 1 - index)"
                       v-for="(bit, index) in reg.bits_names.slice().reverse()" :key="index"/>
                 </CButtonGroup>

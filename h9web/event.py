@@ -81,9 +81,4 @@ class Event(BaseAPIHandler):
     @classmethod
     async def publish_to_all(cls, event, data):
         cls.event_id += 1
-        if event == Event.FRAME_EVENT:
-            frame = data
-            frame["priority"] = 0 if frame["priority"] == "H" else 1
-            await tornado.web.gen.multi([sub.publish_event(Event.FRAME_EVENT, frame) for sub in cls.subscribers])
-        else:
-            await tornado.web.gen.multi([sub.publish_event(event, data) for sub in cls.subscribers])
+        await tornado.web.gen.multi([sub.publish_event(event, data) for sub in cls.subscribers])

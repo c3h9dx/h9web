@@ -10,7 +10,7 @@ class BaseHandler(tornado.web.RequestHandler):
             # self.set_header("Access-Control-Allow-Origin", "*")
             self.set_header("Access-Control-Allow-Origin", "*")
             self.set_header("Access-Control-Allow-Headers", "Authorization, *")
-            self.set_header('Access-Control-Allow-Methods', 'PUT, POST, GET, OPTIONS')
+            self.set_header('Access-Control-Allow-Methods', 'PUT, POST, GET, DELETE, OPTIONS')
 
     def get_client_addr(self) -> (str, int):
         #TODO: add support for X-Headers

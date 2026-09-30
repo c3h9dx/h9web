@@ -45,9 +45,10 @@ class H9d:
         self.msg_stream.write_json_str(json.dumps(rpc_message))
 
     def flush_result_queue(self):
-        for key, result_future in self.result_queue.items():
-            result_future.set_exception(H9d.H9dDisconnect())
-            del key
+        for result_future in self.result_queue.values():
+            if not result_future.done():
+                result_future.set_exception(H9d.H9dDisconnect())
+        self.result_queue.clear()
 
     async def on_disconnect(self):
         self.is_close = True
@@ -60,29 +61,18 @@ class H9d:
             try:
                 await self.msg_stream.connect(self.entity)
 
-                req = jsonrpc.request("subscribe", params={"event": "frame"})
-                self.msg_stream.write_json_str(json.dumps(req))
-                data = await self.msg_stream.read_json_str()
-                res = jsonrpc.parse_json(data)
-
-                if not isinstance(res, jsonrpc.Ok) or res.id != req["id"]:
-                    logging.error("H9d frame subscribe error - {}".format(res))
-
-                req = jsonrpc.request("subscribe", params={"event": "dev_status"})
-                self.msg_stream.write_json_str(json.dumps(req))
-                data = await self.msg_stream.read_json_str()
-                res = jsonrpc.parse_json(data)
+                for event in ("frame", "dev_status"):
+                    res = await self._handshake_request("subscribe", {"event": event})
+                    if not isinstance(res, jsonrpc.Ok):
+                        logging.error("H9d {} subscribe error - {}".format(event, res))
 
                 self.is_close = False
                 self.flush_result_queue()
 
-                if not isinstance(res, jsonrpc.Ok) or res.id != req["id"]:
-                    logging.error("H9d dev_status subscribe error - {}".format(res))
-
                 tornado.ioloop.IOLoop.current().add_callback(lambda : Stats.refresh_base_stats(self) )
                 # await Stats.refresh_base_stats(self)
 
-            except (StreamClosedError, OSError) as e:
+            except (StreamClosedError, IncompleteReadError, OSError) as e:
                 self.is_close = True
                 if self.retry_count == 0:
                     logging.error("Unable connect to h9d - retry in 10 seconds...")
@@ -99,27 +89,7 @@ class H9d:
             while True:
                 try:
                     data = await self.msg_stream.read_json_str()
-
-                    msg = jsonrpc.parse_json(data)
-                    if isinstance(msg, jsonrpc.Notification) and msg.method == 'on_frame':
-                        logging.warning(msg)
-                        await Frames.on_frame(msg.params["frame"])
-                    elif isinstance(msg, jsonrpc.Notification) and msg.method == 'dev_status_update':
-                        logging.warning(msg)
-                        await Dev.on_dev_state_update(msg.params["dev"], msg.params["status"])
-                    elif isinstance(msg, jsonrpc.Ok):
-                        # logging.warning("Ok result")
-                        # logging.info(msg)
-                        if msg.id in self.result_queue:
-                            self.result_queue[msg.id].set_result(msg.result)
-                            del self.result_queue[msg.id]
-                    elif isinstance(msg, jsonrpc.Error):
-                        logging.warning(data)
-                        if msg.id in self.result_queue:
-                            self.result_queue[msg.id].set_exception(H9d.H9MsgException(msg.code, msg.message))
-                            del self.result_queue[msg.id]
-                    else:
-                        logging.warning("Recv unsupported message {}".format(msg))
+                    await self._dispatch(jsonrpc.parse_json(data))
                 except (StreamClosedError, IncompleteReadError, ConnectionError):
                     logging.error("Disconnected from h9d - retry in 5 seconds...")
                     await self.on_disconnect()
@@ -128,6 +98,38 @@ class H9d:
                 except Exception as e:
                     logging.error("Error {}".format(type(e)))
                     logging.error("Error {} on message: {}".format(e, data))
+
+    async def _handshake_request(self, method, params):
+        # Before the main read loop runs, wait for the matching response ourselves;
+        # anything else that arrives meanwhile (e.g. an on_frame notification) is dispatched as usual.
+        req = jsonrpc.request(method, params=params)
+        self.msg_stream.write_json_str(json.dumps(req))
+        while True:
+            msg = jsonrpc.parse_json(await self.msg_stream.read_json_str())
+            if isinstance(msg, (jsonrpc.Ok, jsonrpc.Error)) and msg.id == req["id"]:
+                return msg
+            await self._dispatch(msg)
+
+    async def _dispatch(self, msg):
+        if isinstance(msg, jsonrpc.Notification) and msg.method == 'on_frame':
+            logging.warning(msg)
+            await Frames.on_frame(msg.params["frame"])
+        elif isinstance(msg, jsonrpc.Notification) and msg.method == 'dev_status_update':
+            logging.warning(msg)
+            await Dev.on_dev_state_update(msg.params["dev"], msg.params["status"])
+        elif isinstance(msg, jsonrpc.Ok):
+            # logging.warning("Ok result")
+            # logging.info(msg)
+            if msg.id in self.result_queue:
+                self.result_queue[msg.id].set_result(msg.result)
+                del self.result_queue[msg.id]
+        elif isinstance(msg, jsonrpc.Error):
+            logging.warning(msg)
+            if msg.id in self.result_queue:
+                self.result_queue[msg.id].set_exception(H9d.H9MsgException(msg.code, msg.message))
+                del self.result_queue[msg.id]
+        else:
+            logging.warning("Recv unsupported message {}".format(msg))
 
     async def call_request(self, rpc_request):
         result_future = Future()

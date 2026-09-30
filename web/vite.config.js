@@ -20,11 +20,11 @@ export default defineConfig({
       },
       {
         find: '@/',
-        replacement: `${path.resolve(__dirname, 'src')}/`,
+        replacement: `${path.resolve(import.meta.dirname, 'src')}/`,
       },
       {
         find: '@',
-        replacement: path.resolve(__dirname, '/src'),
+        replacement: path.resolve(import.meta.dirname, '/src'),
       },
     ],
     extensions: ['.mjs', '.js', '.ts', '.jsx', '.tsx', '.json', '.vue', '.scss'],

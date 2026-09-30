@@ -13,6 +13,10 @@ class H9msgStream(object):
         self._reader, self._writer = await asyncio.open_connection(self._host, self._port)
         msg = jsonrpc.request("authenticate", params={"entity": entity})
         self.write_json_str(json.dumps(msg))
+        # h9d answers authenticate before anything else - consume it so later reads stay in sync
+        res = jsonrpc.parse_json(await self.read_json_str())
+        if not isinstance(res, jsonrpc.Ok) or res.id != msg["id"] or not res.result.get("authentication"):
+            raise ConnectionError("H9d authentication failed - {}".format(res))
 
     def write_json_str(self, json_str):
         data = json_str.encode('utf-8')
