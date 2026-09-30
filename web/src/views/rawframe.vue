@@ -1,6 +1,6 @@
 <script setup>
 
-import {computed, inject, onBeforeUnmount, onMounted, ref} from "vue";
+import {computed, inject, onMounted, ref} from "vue";
 import Card from 'primevue/card'
 import Button from 'primevue/button'
 import ButtonGroup from 'primevue/buttongroup'
@@ -12,12 +12,11 @@ import InputGroupAddon from 'primevue/inputgroupaddon'
 import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
 import Tag from 'primevue/tag'
+import {useEventStream} from '@/composables/useEventStream.js'
 
 const axios = inject('axios');
 const toasts = inject('toasts');
-const sse = inject('sse')
 
-let sseClient
 
 // Frame types as defined in h9can/include/h9def.h (h9d v0.4)
 const frame_type = [
@@ -124,6 +123,8 @@ function addFrame(f) {
   frames.value.push({...f, _key: frame_key++})
 }
 
+useEventStream({frame: addFrame})
+
 onMounted(async () => {
   await axios
       .get('/api/frames')
@@ -135,38 +136,6 @@ onMounted(async () => {
           content: error
         })
       })
-
-  sseClient = sse.create({
-    format: 'json',
-    url: '/api/events?filter=frame',
-    withCredentials: true,
-  })
-
-  sseClient.connect().then(sse => {
-    console.log('We\'re connected!');
-  }).catch((error) => {
-    toasts.value.push({
-      title: 'SSE connect',
-      content: error
-    })
-    console.error('Failed make initial connection:', error)
-  });
-
-  sseClient.on('frame', (message, lastEventId) => {
-    console.warn('Received a message w/o an event!', message, lastEventId);
-    addFrame(message)
-  });
-
-  sseClient.on('error', (e) => {
-    console.error('lost connection or failed to parse!', e);
-    toasts.value.push({
-      title: 'SSE error',
-      content: e
-    })
-    // If this error is due to an unexpected disconnection, EventSource will
-    // automatically attempt to reconnect indefinitely. You will _not_ need to
-    // re-add your handlers.
-  });
 
 })
 
@@ -239,10 +208,6 @@ async function send_frame() {
 
 }
 
-onBeforeUnmount(() => {
-  console.error('Disconnecting!');
-  sseClient.disconnect()
-})
 
 function copyFrame(f) {
   frame.value.type = f.type;

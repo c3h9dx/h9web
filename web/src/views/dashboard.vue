@@ -1,111 +1,80 @@
 <script setup>
 
-import {defineAsyncComponent, inject, onMounted, reactive, ref} from 'vue'
+import {inject, onMounted, ref} from 'vue'
 import {GridLayout} from 'grid-layout-plus'
+import Button from 'primevue/button'
+
+import {useEventStream} from '@/composables/useEventStream.js'
+import {unknownWidget, widgets} from './dev/index.js'
 
 const axios = inject('axios');
 const toasts = inject('toasts');
-const sse = inject('sse')
-
-let sseClient
-
-const components = {}
-const loadComponents = async () => {
-  const modules = import.meta.glob('./dev/*.vue');
-
-  for (const path in modules) {
-    const name = path.match(/\/([^/]+)\.vue$/)[1];
-    components[name] = defineAsyncComponent(modules[path]);
-  }
-};
-
-loadComponents();
 
 const layout = ref([])
-const devs_state = ref({})
+const devs = ref({})  // name -> {name, type, methods, state}
+const loaded = ref(false)
+const editing = ref(false)
 
-function updateDevState(target, updates) {
-  for (const key in updates) {
-    if (updates.hasOwnProperty(key)) {
-      if (typeof updates[key] === 'object' && updates[key] !== null && typeof target[key] === 'object' && target[key] !== null) {
-        updateDevState(target[key], updates[key]);
-      } else {
-        target[key] = updates[key];
-      }
-    }
-  }
+function widgetOf(dev_name) {
+  return widgets[devs.value[dev_name]?.type] ?? unknownWidget
 }
 
-function saveLayout(l) {
-  if (l.length) {
-    axios.post('/api/dashboard', {'layout': l}, {headers: {'Content-Type': 'application/json'}}).then(response => {
-    }).catch(function (error) {
-      toasts.value.push({
-        title: 'Dashboard save',
-        content: error
-      })
-    })
-  }
-}
-
-onMounted(async () => {
-  axios.get('/api/dashboard').then(response => {
-    for (const l in response.data.response) {
-      let tmp = {}
-      tmp[l.i] = {}
-      updateDevState(devs_state.value, tmp)
-    }
-    layout.value = response.data.response
+async function loadDashboard() {
+  await axios.get('/api/dashboard').then(response => {
+    const {layout: l, devs: d} = response.data.response
+    devs.value = Object.fromEntries(Object.entries(d).map(([name, dev]) => [name, {name, ...dev}]))
+    layout.value = l
   }).catch(function (error) {
     toasts.value.push({
       title: 'Dashboard init',
       content: error
     })
   })
+  loaded.value = true
+}
 
-  sseClient = sse.create({
-    format: 'json',
-    url: '/api/events?filter=dev',
-    withCredentials: true,
-  })
-
-  sseClient.connect().then(sse => {
-    console.log('We\'re connected!');
-  }).catch((error) => {
+// Tiles move only in edit mode, so every layout change there is the user's - save it right away
+function onLayoutUpdated() {
+  if (!editing.value) {
+    return
+  }
+  axios.post('/api/dashboard', {layout: layout.value}).catch(function (error) {
     toasts.value.push({
-      title: 'SSE connect',
+      title: 'Dashboard save',
       content: error
     })
-    console.error('Failed make initial connection:', error)
-  });
+  })
+}
 
-  sseClient.on('dev', (message, lastEventId) => {
-    console.warn('Received a message w/o an event!', message, lastEventId);
-    let tmp = {}
-    tmp[message.dev_name] = message.state
-    updateDevState(devs_state.value, tmp)
-    console.log(tmp)
-    console.log(devs_state.value)
-    // last_stats.value = message;
-  });
-
-  sseClient.on('error', (e) => {
-    console.error('lost connection or failed to parse!', e);
-    toasts.value.push({
-      title: 'SSE error',
-      content: e
-    })
-  });
+useEventStream({
+  dev: (message) => {
+    const dev = devs.value[message.dev_name]
+    if (dev) {
+      dev.state = {...dev.state, ...message.state}
+    }
+  }
 })
+
+onMounted(loadDashboard)
 
 </script>
 
 <template>
-  <div>
-    <GridLayout v-model:layout="layout" :row-height="30" @layout-updated="saveLayout">
+  <div class="page">
+    <div class="toolbar">
+      <Button :label="editing ? 'Done' : 'Edit layout'" :icon="editing ? 'pi pi-check' : 'pi pi-pencil'"
+              :severity="editing ? undefined : 'secondary'" size="small" @click="editing = !editing"/>
+      <span v-if="editing" class="muted">Drag tiles to move them, drag the corner to resize.</span>
+    </div>
+    <p v-if="loaded && !layout.length" class="muted">h9d reports no devices.</p>
+    <GridLayout v-model:layout="layout" :row-height="30" :is-draggable="editing" :is-resizable="editing"
+                :class="{ editing }" @layout-updated="onLayoutUpdated">
       <template #item="{ item }">
         <div class="surface-card dash-item">
-          <component :is="components[item.component]" :dev_name="item.i" :dev_state="devs_state[item.i]"/>
+          <div class="dev-header">{{ widgetOf(item.i).title }} <small>{{ item.i }}</small></div>
+          <div class="dev-body">
+            <component :is="widgetOf(item.i).component" :dev="devs[item.i]"/>
+          </div>
         </div>
       </template>
     </GridLayout>
@@ -116,5 +85,17 @@ onMounted(async () => {
 .dash-item {
   height: 100%;
   overflow: hidden;
+}
+
+/* Edit mode: make tiles look movable and keep clicks from reaching the device controls */
+.editing .dash-item {
+  cursor: move;
+  outline: 2px dashed var(--p-primary-color);
+  outline-offset: -2px;
+}
+
+.editing .dev-body {
+  pointer-events: none;
+  opacity: .6;
 }
 </style>

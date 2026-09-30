@@ -28,6 +28,7 @@ define('version', type=bool, help='Show version information', callback=print_ver
 define('cli', default='/usr/local/bin/h9cli', help='CLI path')
 define('h9daddress', default='127.0.0.1', help='H9d address')
 define('h9dport', type=int, default='7979', help='H9d port')
+define('dashboard_file', default='~/.h9web/dashboard.json', help='File where the dashboard layout is kept')
 
 
 def get_server_settings(options):

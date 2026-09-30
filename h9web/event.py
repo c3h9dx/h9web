@@ -1,6 +1,7 @@
 import logging
 import json
 
+import tornado.locks
 import tornado.web
 from tornado.iostream import StreamClosedError
 from h9web.api import BaseAPIHandler
@@ -20,7 +21,7 @@ class Event(BaseAPIHandler):
         self.set_header('Cache-Control', 'no-cache')
         self.set_header('X-Accel-Buffering', 'no')
         self.set_header('Connection', 'keep-alive')
-        self.run = True
+        self.closed = tornado.locks.Event()
         self.context = self.request.connection.context
 
     def convert_uptime(self, n):
@@ -52,7 +53,7 @@ class Event(BaseAPIHandler):
                 self.write('data: {}\n\n'.format(json.dumps(data)))
                 await self.flush()
             except StreamClosedError:
-                self.run = False
+                self.closed.set()
 
     def isEventPassFilter(self, event):
         return len(self.event_filter) == 0 or event in self.event_filter
@@ -70,13 +71,18 @@ class Event(BaseAPIHandler):
             self.write('data: established\n\n')
             await self.flush()
         except StreamClosedError:
-            self.run = False
-        while self.run:
-            await tornado.web.gen.sleep(60)
+            self.closed.set()
+        # Keep the stream open until the client goes away
+        await self.closed.wait()
+
+    def on_connection_close(self):
+        # Called by tornado as soon as the client disconnects, even if nothing is being written to it
+        self.closed.set()
 
     def on_finish(self):
         logging.info('Disconnected event subscribers {}:{}'.format(*self.context.address[:2]))
-        Event.subscribers.remove(self)
+        if self in Event.subscribers:
+            Event.subscribers.remove(self)
 
     @classmethod
     async def publish_to_all(cls, event, data):

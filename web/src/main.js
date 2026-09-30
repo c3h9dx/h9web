@@ -6,8 +6,6 @@ import router from './router'
 
 import axios from 'axios'
 
-import VueSSE from 'vue-sse';
-
 import PrimeVue from 'primevue/config'
 import ToastService from 'primevue/toastservice'
 import Tooltip from 'primevue/tooltip'
@@ -39,7 +37,6 @@ const app = createApp(App)
 
 app.use(router)
 app.use(createPinia())
-app.use(VueSSE);
 app.use(PrimeVue, {
   theme: {
     preset: H9Preset,
@@ -53,7 +50,6 @@ app.use(ToastService)
 app.directive('tooltip', Tooltip)
 
 app.provide('axios', axios)
-app.provide('sse', app.config.globalProperties.$sse)
 
 const toasts = ref([])
 app.provide('toasts', toasts)

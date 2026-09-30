@@ -2,13 +2,18 @@
 
 import {inject, onMounted, ref} from "vue";
 import Card from 'primevue/card'
+import {useEventStream} from '@/composables/useEventStream.js'
 
 const axios = inject('axios');
 const toasts = inject('toasts');
-const sse = inject('sse')
 
 const last_stats = ref({})
-let sseClient
+
+useEventStream({
+  stats: (message) => {
+    last_stats.value = message
+  }
+})
 
 onMounted(async () => {
   await axios
@@ -21,40 +26,6 @@ onMounted(async () => {
           content: error
         })
       })
-
-  sseClient = sse.create({
-    format: 'json',
-    url: '/api/events?filter=stats',
-    withCredentials: true,
-  })
-
-  sseClient.connect().then(sse => {
-    console.log('We\'re connected!');
-  }).catch((error) => {
-    toasts.value.push({
-      title: 'SSE connect',
-      content: error
-    })
-    console.error('Failed make initial connection:', error)
-  });
-
-  sseClient.on('stats', (message, lastEventId) => {
-    console.warn('Received a message w/o an event!', message, lastEventId);
-
-    last_stats.value = message;
-  });
-
-  sseClient.on('error', (e) => {
-    console.error('lost connection or failed to parse!', e);
-    toasts.value.push({
-      title: 'SSE error',
-      content: e
-    })
-    // If this error is due to an unexpected disconnection, EventSource will
-    // automatically attempt to reconnect indefinitely. You will _not_ need to
-    // re-add your handlers.
-  });
-
 
 })
 
