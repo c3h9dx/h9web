@@ -288,8 +288,9 @@ function toggleFrameDetails(f) {
           <div class="field">
             <label for="inputType">Type</label>
             <Select inputId="inputType" v-model="frame.type" :options="frame_type_groups" optionGroupLabel="label"
-                    optionGroupChildren="items" optionLabel="text" optionValue="value" size="small"
-                    class="type-select"/>
+                    optionGroupChildren="items" optionLabel="text" optionValue="value" size="small" scrollHeight="80vh"
+                    filter autoFilterFocus resetFilterOnHide filterPlaceholder="Search type"
+                    overlayClass="type-select-overlay" class="type-select"/>
           </div>
           <div class="field">
             <label for="inputSource">Source</label>
@@ -456,5 +457,19 @@ function toggleFrameDetails(f) {
 
 .label {
   font-weight: 600;
+}
+</style>
+
+<style>
+/* The type list is long (32 types) - compact rows so it fits without scrolling.
+   Not scoped: the overlay is teleported to <body>. */
+.type-select-overlay .p-select-option {
+  padding: .2rem .75rem;
+  font-size: .9rem;
+}
+
+.type-select-overlay .p-select-option-group {
+  padding: .35rem .75rem .15rem;
+  font-size: .8rem;
 }
 </style>
