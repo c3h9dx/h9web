@@ -1,40 +1,46 @@
 <script setup>
 import {defineProps} from "vue";
-import {CCol, CRow} from "@coreui/vue/dist/esm/components/grid/index.js";
+import Button from 'primevue/button'
+import ProgressBar from 'primevue/progressbar'
 
 const props = defineProps({
   dev_name: String,
   dev_state: Object
 });
-
-const vars = {
-  '--cui-progress-bar-transition': "width .1s ease"
-}
 </script>
 
 <template>
-  <CCardHeader>ATU <small>{{ dev_name }}</small></CCardHeader>
-  <CCardBody>
-    <CRow class="mb-2">
-      <CCol>
+  <div class="dev-header">ATU <small>{{ dev_name }}</small></div>
+  <div class="dev-body">
+    <div>
       PWR: {{ dev_state?.pwr }} W
-      <CProgress :style="vars" :value="dev_state?.pwr" color="success" :thin="true"/>
-      </CCol>
-    </CRow>
-    <CRow class="mb-2">
-      <CCol>
+      <ProgressBar class="meter meter-pwr" :value="dev_state?.pwr" :showValue="false"/>
+    </div>
+    <div>
       SWR: {{ dev_state?.swr / 100 }}
-      <CProgress :style="vars" :value="dev_state?.swr ? (dev_state?.swr - 100) * 100 / 899 : 0" color="danger" :thin="true"/>
-      <!--    <CProgress :value="10" color="success"/>-->
-      <!--    <CFormSwitch size="lg" label="Main power" @click="handleClick" v-model="state"/>-->
-      </CCol>
-    </CRow>
-<!--    <CRow>-->
-      <CButton color="primary" variant="outline">Tune</CButton>
-<!--    </CRow>-->
-  </CCardBody>
+      <ProgressBar class="meter meter-swr" :value="dev_state?.swr ? (dev_state?.swr - 100) * 100 / 899 : 0" :showValue="false"/>
+    </div>
+    <div>
+      <Button label="Tune" outlined size="small"/>
+    </div>
+  </div>
 </template>
 
 <style scoped>
+.meter {
+  height: .3rem;
+  margin-top: .25rem;
+}
 
+.meter :deep(.p-progressbar-value) {
+  transition: width .1s ease;
+}
+
+.meter-pwr {
+  --p-progressbar-value-background: var(--p-green-500);
+}
+
+.meter-swr {
+  --p-progressbar-value-background: var(--p-red-500);
+}
 </style>

@@ -1,63 +1,83 @@
 <script setup>
 import {inject, ref} from "vue";
+import Card from 'primevue/card'
+import InputGroup from 'primevue/inputgroup'
+import InputGroupAddon from 'primevue/inputgroupaddon'
+import InputText from 'primevue/inputtext'
+import Button from 'primevue/button'
+import Popover from 'primevue/popover'
 
 const axios = inject('axios');
 
 const user = ref("")
 const password = ref("")
+const forgotPopover = ref(null)
+
 async function handleLoginClick() {
   await axios
       .post('/api/login', {user: user.value, password: password.value}, {headers: {'Content-Type': 'application/json'}})
       .then(response => {
-        console.log(response.data.response)
         window.location.href = "/"
       })
 }
 
 </script>
 <template>
-  <div class="wrapper min-vh-100 d-flex flex-row align-items-center">
-    <CContainer>
-      <CRow class="justify-content-center">
-        <CCol :md="4">
-          <CCardGroup>
-            <CCard class="p-4" style="width: 44%">
-              <CCardBody>
-                <CForm>
-                  <h1>Login</h1>
-                  <p class="text-body-secondary">Sign In to your account</p>
-                  <CInputGroup class="mb-3">
-                    <CInputGroupText>
-                      <CIcon icon="cil-user" />
-                    </CInputGroupText>
-                    <CFormInput placeholder="Username" autocomplete="username" v-model="user"/>
-                  </CInputGroup>
-                  <CInputGroup class="mb-4">
-                    <CInputGroupText>
-                      <CIcon icon="cil-lock-locked" />
-                    </CInputGroupText>
-                    <CFormInput type="password" placeholder="Password" autocomplete="current-password" v-model="password"/>
-                  </CInputGroup>
-                  <CRow>
-                    <CCol :xs="6">
-                      <CButton color="primary" class="px-4" @click="handleLoginClick()"> Login </CButton>
-                    </CCol>
-                    <CCol :xs="6" class="text-right">
-                      <CPopover content="Unfortunately, I can't help you. &#128523;" placement="bottom">
-                        <template #toggler="{ id, on }">
-                          <CButton color="link" class="px-0" v-on="on">Forgot password?</CButton>
-                        </template>
-                      </CPopover>
-                    </CCol>
-                  </CRow>
-                </CForm>
-              </CCardBody>
-            </CCard>
-          </CCardGroup>
-        </CCol>
-      </CRow>
-    </CContainer>
+  <div class="login-page">
+    <Card class="login-card">
+      <template #content>
+        <form class="login-form" @submit.prevent="handleLoginClick()">
+          <div>
+            <h1>Login</h1>
+            <p class="muted">Sign In to your account</p>
+          </div>
+          <InputGroup>
+            <InputGroupAddon><i class="pi pi-user"/></InputGroupAddon>
+            <InputText placeholder="Username" autocomplete="username" v-model="user"/>
+          </InputGroup>
+          <InputGroup>
+            <InputGroupAddon><i class="pi pi-lock"/></InputGroupAddon>
+            <InputText type="password" placeholder="Password" autocomplete="current-password" v-model="password"/>
+          </InputGroup>
+          <div class="login-actions">
+            <Button type="submit" label="Login"/>
+            <Button type="button" label="Forgot password?" link @click="(e) => forgotPopover.toggle(e)"/>
+            <Popover ref="forgotPopover">Unfortunately, I can't help you. &#128523;</Popover>
+          </div>
+        </form>
+      </template>
+    </Card>
   </div>
 </template>
-<script setup>
-</script>
+
+<style scoped>
+.login-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 1rem;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 26rem;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.login-form p {
+  margin: 0;
+}
+
+.login-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+</style>

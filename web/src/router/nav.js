@@ -1,72 +1,28 @@
+// Sidebar navigation (components/AppSidebar.vue); icons are PrimeIcons classes
 export default [
   {
-    component: 'CNavItem',
     name: 'Dashboard',
     to: '/dashboard',
-    icon: 'cil-apps',
-    // badge: {
-    //   color: 'primary',
-    //   text: 'NEW',
-    // },
+    icon: 'pi pi-th-large',
   },
-  // {
-  //   component: 'CNavTitle',
-  //   name: 'Configuration',
-  // },
   {
-    component: 'CNavItem',
     name: 'Nodes',
     to: '/nodes',
-    icon: 'cil-sitemap',
+    icon: 'pi pi-sitemap',
   },
   {
-    component: 'CNavItem',
     name: 'Raw frame',
     to: '/rawframe',
-    icon: 'cil-beaker',
+    icon: 'pi pi-list',
   },
   {
-    component: 'CNavItem',
     name: 'Stats',
     to: '/stats',
-    icon: 'cil-avTimer',
+    icon: 'pi pi-chart-bar',
   },
   {
-    component: 'CNavItem',
     name: 'Settings',
     to: '/settings',
-    icon: 'cil-settings',
+    icon: 'pi pi-cog',
   },
-  // {
-  //   component: 'CNavTitle',
-  //   name: 'Extras',
-  // },
-  // {
-  //   component: 'CNavGroup',
-  //   name: 'Pages',
-  //   to: '/pages',
-  //   icon: 'cil-star',
-  //   items: [
-  //     {
-  //       component: 'CNavItem',
-  //       name: 'Login',
-  //       to: '/pages/login',
-  //     },
-  //     {
-  //       component: 'CNavItem',
-  //       name: 'Register',
-  //       to: '/pages/register',
-  //     },
-  //     {
-  //       component: 'CNavItem',
-  //       name: 'Error 404',
-  //       to: '/pages/404',
-  //     },
-  //     {
-  //       component: 'CNavItem',
-  //       name: 'Error 500',
-  //       to: '/pages/500',
-  //     },
-  //   ],
-  // },
 ]

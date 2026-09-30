@@ -1,5 +1,7 @@
 <script setup>
 import {defineProps, inject, ref} from 'vue'
+import Button from 'primevue/button'
+import ButtonGroup from 'primevue/buttongroup'
 
 const axios = inject('axios');
 const toasts = inject('toasts');
@@ -30,16 +32,13 @@ function isAntennaActive(antenna_number) {
 </script>
 
 <template>
-  <CCardHeader>Antenna Switch <small>{{ props.dev_name }}</small></CCardHeader>
-  <CCardBody>
-    <CButtonGroup size="sm">
-      <template v-for="i in 8" :key="i">
-        <CButton color="primary" variant="outline" @click="selectAntenna(i)" :active="isAntennaActive(i)">{{ i }}</CButton>
-<!--        <CFormCheck :button="{color: 'primary', variant: 'outline'}" :label="i.toString()" :id="dev_name.toString() + '_' + i.toString()" :checked="isAntennaActive(i)" @change="(event) => selectAntenna(i)"/>-->
-<!--        <CFormCheck :button="{ color: 'success', variant: 'outline' }" type="radio" name="select_antenna" :label="i.toString()" :value="rr" :id="dev_name.toString() + '_' + i.toString()" :checked="isAntennaActive(i)" @click="selectAntenna(i)"/>-->
-      </template>
-    </CButtonGroup>
-  </CCardBody>
+  <div class="dev-header">Antenna Switch <small>{{ props.dev_name }}</small></div>
+  <div class="dev-body">
+    <ButtonGroup>
+      <Button v-for="i in 8" :key="i" :label="i.toString()" size="small" :outlined="!isAntennaActive(i)"
+              @click="selectAntenna(i)"/>
+    </ButtonGroup>
+  </div>
 </template>
 
 <style scoped>

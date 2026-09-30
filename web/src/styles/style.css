@@ -1,0 +1,124 @@
+/* Global layout and helpers. Component styling comes from the PrimeVue Aura theme;
+   colors below are built on its CSS variables so they follow the dark mode switch (.app-dark). */
+
+:root {
+  --app-bg: var(--p-surface-100);
+  --app-surface: var(--p-content-background);
+  --app-border: var(--p-content-border-color);
+  --app-text: var(--p-text-color);
+  --app-text-muted: var(--p-text-muted-color);
+  --app-sidebar-bg: #212631;
+  --app-sidebar-text: rgba(255, 255, 255, .7);
+  --app-sidebar-active-bg: rgba(255, 255, 255, .08);
+  --app-sidebar-width: 16rem;
+  --app-header-height: 4rem;
+  --app-gap: 1rem;
+}
+
+.app-dark {
+  --app-bg: var(--p-surface-950);
+  --app-sidebar-bg: #1d222b;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 15px;
+}
+
+body {
+  margin: 0;
+  background: var(--app-bg);
+  color: var(--app-text);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  line-height: 1.5;
+}
+
+h1, h2, h3, h4 {
+  margin: 0 0 .5rem;
+  font-weight: 600;
+}
+
+code {
+  font-size: .85em;
+  word-break: break-all;
+}
+
+/* --- Page building blocks --- */
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--app-gap);
+}
+
+/* Responsive columns: children wrap onto new lines on narrow screens */
+.page-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--app-gap);
+  align-items: flex-start;
+}
+
+.page-row > * {
+  flex: 1 1 22rem;
+  min-width: 0;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  align-items: center;
+}
+
+.muted {
+  color: var(--app-text-muted);
+}
+
+/* Label / value list, e.g. node info and stats */
+.kv {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: .25rem 1.5rem;
+  margin: 0;
+}
+
+.kv dt {
+  color: var(--app-text-muted);
+}
+
+.kv dd {
+  margin: 0;
+  min-width: 0;
+}
+
+/* Plain card surface for places where p-card doesn't fit (dashboard grid items) */
+.surface-card {
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  border-radius: var(--p-card-border-radius, 12px);
+  box-shadow: var(--p-card-shadow);
+  color: var(--app-text);
+}
+
+/* Header + body of a dashboard device widget (views/dev/*.vue) */
+.dev-header {
+  padding: .6rem 1rem;
+  border-bottom: 1px solid var(--app-border);
+  font-weight: 600;
+}
+
+.dev-header small {
+  font-weight: 400;
+  color: var(--app-text-muted);
+}
+
+.dev-body {
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: .75rem;
+}

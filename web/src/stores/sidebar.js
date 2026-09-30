@@ -1,17 +1,17 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
 
+// Must match the breakpoint in layouts/DefaultLayout.vue
+const WIDE_SCREEN = '(min-width: 992px)'
+
 export const useSidebarStore = defineStore('sidebar', () => {
-  const visible = ref(undefined)
-  const unfoldable = ref(false)
+  // null = default for the screen size: shown on wide screens, hidden on narrow ones
+  const visible = ref(null)
 
   const toggleVisible = (value) => {
-    visible.value = value !== undefined ? value : !visible.value
+    const current = visible.value ?? window.matchMedia(WIDE_SCREEN).matches
+    visible.value = value !== undefined ? value : !current
   }
 
-  const toggleUnfoldable = () => {
-    unfoldable.value = !unfoldable.value
-  }
-
-  return { visible, unfoldable, toggleVisible, toggleUnfoldable }
+  return { visible, toggleVisible }
 })

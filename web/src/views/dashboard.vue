@@ -102,12 +102,19 @@ onMounted(async () => {
 
 <template>
   <div>
-    <GridLayout v-model:layout="layout" :row-height="30" class="h-75" @layout-updated="saveLayout">
+    <GridLayout v-model:layout="layout" :row-height="30" @layout-updated="saveLayout">
       <template #item="{ item }">
-        <CCard class="h-100" style="overflow: hidden;">
+        <div class="surface-card dash-item">
           <component :is="components[item.component]" :dev_name="item.i" :dev_state="devs_state[item.i]"/>
-        </CCard>
+        </div>
       </template>
     </GridLayout>
   </div>
 </template>
+
+<style scoped>
+.dash-item {
+  height: 100%;
+  overflow: hidden;
+}
+</style>

@@ -1,9 +1,7 @@
 <script setup>
 
 import {inject, onMounted, ref} from "vue";
-import {CCol, CRow} from "@coreui/vue/dist/cjs/components/grid/index.js";
-import {CCard, CCardBody} from "@coreui/vue/dist/cjs/components/card/index.js";
-import {CCardHeader} from "@coreui/vue/dist/esm/components/card/index.js";
+import Card from 'primevue/card'
 
 const axios = inject('axios');
 const toasts = inject('toasts');
@@ -98,114 +96,100 @@ onMounted(async () => {
 </script>
 
 <template>
-  <CRow class="mb-4">
-    <CCol>
-      <CCard>
-        <CCardHeader>h9d</CCardHeader>
-        <CCardBody>
-          <CRow>
-            <CCol class="col-2">Version:</CCol>
-            <CCol>{{ last_stats?.h9d?.version || '---'}}</CCol>
-          </CRow>
-          <CRow>
-            <CCol class="col-2">Commit:</CCol>
-            <CCol>{{ last_stats?.h9d?.commit || '---'}}</CCol>
-          </CRow>
-          <CRow>
-            <CCol class="col-2">Uptime:</CCol>
-            <CCol>{{ last_stats?.h9d?.uptime || '---'}}</CCol>
-          </CRow>
-        </CCardBody>
-      </CCard>
-    </CCol>
-    <CCol>
-      <CCard>
-        <CCardHeader>h9web</CCardHeader>
-        <CCardBody>
-          <CRow>
-            <CCol class="col-2">Version:</CCol>
-            <CCol>{{ last_stats?.h9web?.version || '---'}}</CCol>
-          </CRow>
-        </CCardBody>
-      </CCard>
-    </CCol>
-  </CRow>
-  <CRow>
-    <CCol>
-      <CCard>
-        <CCardHeader>Bus</CCardHeader>
-        <CCardBody>
-          <CRow>
-            <CCol class="col-3">Received frames:</CCol>
-            <CCol>{{ last_stats?.h9d?.bus?.received_frames || '---'}}</CCol>
-          </CRow>
-          <CRow>
-            <CCol class="col-3">Send frames:</CCol>
-            <CCol>{{ last_stats?.h9d?.bus?.send_frames || '---'}}</CCol>
-          </CRow>
-        </CCardBody>
-        <CListGroup flush>
-          <CListGroupItem v-for="(endpoint,name) in last_stats?.h9d?.bus?.endpoints">
-            <CRow>
-              <CCol class="col-3">{{ name }}:</CCol>
-              <CCol class="col-4">Received frames:</CCol>
-              <CCol>{{ endpoint.received_frames}}</CCol>
-            </CRow>
-            <CRow>
-              <CCol class="col-3"></CCol>
-              <CCol class="col-4">Received frames per s:</CCol>
-              <CCol>{{ endpoint.received_frames_per_s}} f/s</CCol>
-            </CRow>
-            <CRow>
-              <CCol class="col-3"></CCol>
-              <CCol class="col-4">Send frames:</CCol>
-              <CCol>{{ endpoint.send_frames}}</CCol>
-            </CRow>
-            <CRow>
-              <CCol class="col-3"></CCol>
-              <CCol class="col-4">Send frames per s:</CCol>
-              <CCol>{{ endpoint.send_frames_per_s}} f/s</CCol>
-            </CRow>
-          </CListGroupItem>
-        </CListGroup>
-      </CCard>
-    </CCol>
-    <CCol>
-      <CCard>
-        <CCardHeader>TCP</CCardHeader>
-        <CListGroup flush>
-          <CListGroupItem v-for="client in last_stats?.h9d?.tcp_clients">
-            <CRow>
-              <CCol class="col-4">Entity:</CCol>
-              <CCol>{{ client.entity || '---'}}</CCol>
-            </CRow>
-            <CRow>
-              <CCol class="col-4">Remote:</CCol>
-              <CCol>{{ client.remote_address }}:{{ client.remote_port }}</CCol>
-            </CRow>
-            <CRow>
-              <CCol class="col-4">Connected at:</CCol>
-              <CCol>{{ (new Date(client.connection_time)).toLocaleString() }}</CCol>
-            </CRow>
-            <CRow>
-              <CCol class="col-4">Authenticated:</CCol>
-              <CCol>{{ client.authenticated ? 'Yes' : 'No'}}</CCol>
-            </CRow>
-            <CRow>
-              <CCol class="col-4">Frame subscription:</CCol>
-              <CCol>{{ client.frame_subscription ? 'Yes' : 'No'}}</CCol>
-            </CRow>
-            <CRow>
-              <CCol class="col-4">Dev subscription:</CCol>
-              <CCol>{{ client.dev_subscription ? 'Yes' : 'No'}}</CCol>
-            </CRow>
-          </CListGroupItem>
-        </CListGroup>
-      </CCard>
-    </CCol>
-  </CRow>
+  <div class="page">
+    <div class="page-row">
+      <Card>
+        <template #title>h9d</template>
+        <template #content>
+          <dl class="kv">
+            <dt>Version:</dt>
+            <dd>{{ last_stats?.h9d?.version || '---' }}</dd>
+            <dt>Commit:</dt>
+            <dd>{{ last_stats?.h9d?.commit || '---' }}</dd>
+            <dt>Uptime:</dt>
+            <dd>{{ last_stats?.h9d?.uptime || '---' }}</dd>
+          </dl>
+        </template>
+      </Card>
+      <Card>
+        <template #title>h9web</template>
+        <template #content>
+          <dl class="kv">
+            <dt>Version:</dt>
+            <dd>{{ last_stats?.h9web?.version || '---' }}</dd>
+          </dl>
+        </template>
+      </Card>
+    </div>
+    <div class="page-row">
+      <Card>
+        <template #title>Bus</template>
+        <template #content>
+          <dl class="kv">
+            <dt>Received frames:</dt>
+            <dd>{{ last_stats?.h9d?.bus?.received_frames || '---' }}</dd>
+            <dt>Send frames:</dt>
+            <dd>{{ last_stats?.h9d?.bus?.send_frames || '---' }}</dd>
+          </dl>
+          <div v-for="(endpoint, name) in last_stats?.h9d?.bus?.endpoints" :key="name" class="list-item">
+            <div class="list-item-title">{{ name }}</div>
+            <dl class="kv">
+              <dt>Received frames:</dt>
+              <dd>{{ endpoint.received_frames }}</dd>
+              <dt>Received frames per s:</dt>
+              <dd>{{ endpoint.received_frames_per_s }} f/s</dd>
+              <dt>Send frames:</dt>
+              <dd>{{ endpoint.send_frames }}</dd>
+              <dt>Send frames per s:</dt>
+              <dd>{{ endpoint.send_frames_per_s }} f/s</dd>
+            </dl>
+          </div>
+        </template>
+      </Card>
+      <Card>
+        <template #title>TCP</template>
+        <template #content>
+          <div v-for="client in last_stats?.h9d?.tcp_clients" :key="client.id" class="list-item">
+            <dl class="kv">
+              <dt>Entity:</dt>
+              <dd>{{ client.entity || '---' }}</dd>
+              <dt>Remote:</dt>
+              <dd>{{ client.remote_address }}:{{ client.remote_port }}</dd>
+              <dt>Connected at:</dt>
+              <dd>{{ (new Date(client.connection_time)).toLocaleString() }}</dd>
+              <dt>Authenticated:</dt>
+              <dd>{{ client.authenticated ? 'Yes' : 'No' }}</dd>
+              <dt>Frame subscription:</dt>
+              <dd>{{ client.frame_subscription ? 'Yes' : 'No' }}</dd>
+              <dt>Dev subscription:</dt>
+              <dd>{{ client.dev_subscription ? 'Yes' : 'No' }}</dd>
+            </dl>
+          </div>
+        </template>
+      </Card>
+    </div>
+  </div>
 </template>
 
 <style scoped>
+.list-item {
+  padding: .75rem 0;
+  border-top: 1px solid var(--app-border);
+}
 
+.list-item:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+.kv + .list-item {
+  margin-top: .75rem;
+  border-top: 1px solid var(--app-border);
+  padding-top: .75rem;
+}
+
+.list-item-title {
+  font-weight: 600;
+  margin-bottom: .25rem;
+}
 </style>

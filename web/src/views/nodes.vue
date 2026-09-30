@@ -1,53 +1,25 @@
 <script setup>
-import {inject, onMounted, ref} from "vue";
-import {CCol, CRow} from "@coreui/vue/dist/esm/components/grid/index.js";
-import {CFormInput} from "@coreui/vue/dist/esm/components/form/index.js";
-import {CButton} from "@coreui/vue/dist/esm/components/button/index.js";
-import {CCard, CCardBody} from "@coreui/vue/dist/esm/components/card/index.js";
+import {computed, inject, onMounted, ref} from "vue";
+import Card from 'primevue/card'
+import Button from 'primevue/button'
+import ButtonGroup from 'primevue/buttongroup'
+import DataTable from 'primevue/datatable'
+import Column from 'primevue/column'
+import InputText from 'primevue/inputtext'
 
 const axios = inject('axios');
 const toasts = inject('toasts');
 
-const node_columns = [
-  {
-    key: 'id',
-    label: '#',
-    // _props: {scope: 'col'},
-  },
-  {
-    key: 'name',
-    // _props: {scope: 'col'},
-  }
-]
-
-const register_columns = [
-  {
-    key: 'id',
-    label: '#',
-    // _props: {scope: 'col'},
-  },
-  {
-    key: 'name',
-  },
-  {
-    key: 'size',
-    label: 'Size [b]',
-  },
-  {
-    key: 'type',
-  },
-  {
-    key: 'value',
-  },
-  {
-    key: 'action',
-  }
-]
-
-
 const nodes = ref([])
 
 const selected_device = ref({registers_list: []})
+const selected_node = ref(null)
+
+// Registers with named bits get an always-expanded row with a button per bit
+const expanded_registers = computed(() =>
+    Object.fromEntries(selected_device.value.registers_list
+        .filter((reg) => reg.bits_names.length)
+        .map((reg) => [reg.number, true])))
 
 async function refreshNodesList() {
   await axios
@@ -61,6 +33,7 @@ async function refreshNodesList() {
         })
       })
   selected_device.value = {registers_list: []};
+  selected_node.value = null;
 }
 
 async function discoverNodes() {
@@ -132,11 +105,15 @@ async function handleNodeRowClick(id) {
 }
 
 function isBitSet(reg, bit) {
-  return reg & (1 << bit)
+  return (reg & (1 << bit)) !== 0
 }
 
-async function handleBitChange(node_id, reg, bit, event) {
-  const value = event.target.checked
+// bits_names[i] names bit i; shown MSB first
+function bitsOf(reg) {
+  return reg.bits_names.map((name, bit) => ({name, bit})).reverse()
+}
+
+async function handleBitChange(node_id, reg, bit, value) {
   await axios({
     method: value ? 'put' : 'delete',
     url: '/api/node/' + node_id + '/reg/' + reg.number + '/bit/' + bit,
@@ -144,7 +121,6 @@ async function handleBitChange(node_id, reg, bit, event) {
     // h9d answers set/clear bit with raw bytes, so read the value back in the same form as Get
     await registerRead(node_id, reg)
   }).catch(function (error) {
-    event.target.checked = !value  // reg.val is unchanged, so restore the button by hand
     toasts.value.push({
       title: value ? 'Node set bit' : 'Node clear bit',
       content: error
@@ -155,130 +131,108 @@ async function handleBitChange(node_id, reg, bit, event) {
 </script>
 
 <template>
-  <CRow>
-    <CCol sm="3" class="mb-4">
-      <CCard>
-        <CCardBody>
-          <CButton color="secondary" class="m-1" @click="refreshNodesList()">
-            <CIcon icon="cil-loopCircular"/>
-            Refresh
-          </CButton>
-          <CButton color="secondary" class="m-1" @click="discoverNodes()">
-            <CIcon icon="cil-search"/>
-            Discover
-          </CButton>
+  <div class="page-row nodes-page">
+    <Card class="nodes-list">
+      <template #content>
+        <div class="toolbar">
+          <Button label="Refresh" icon="pi pi-refresh" severity="secondary" size="small" @click="refreshNodesList()"/>
+          <Button label="Discover" icon="pi pi-search" severity="secondary" size="small" @click="discoverNodes()"/>
+        </div>
+        <DataTable :value="nodes" dataKey="id" selectionMode="single" v-model:selection="selected_node"
+                   @rowSelect="(e) => handleNodeRowClick(e.data.id)" size="small" class="mt">
+          <Column field="id" header="#"/>
+          <Column field="name" header="Name"/>
+        </DataTable>
+      </template>
+    </Card>
+    <div class="page node-details">
+      <Card>
+        <template #content>
+          <dl class="kv">
+            <dt>Node id:</dt>
+            <dd>{{ selected_device.id }}</dd>
+            <dt>Node type:</dt>
+            <dd>{{ selected_device.type }}</dd>
+            <dt>Node name:</dt>
+            <dd>{{ selected_device.name }}</dd>
+            <dt>Node version:</dt>
+            <dd>
+              <template v-if="selected_device.id !== undefined">
+                {{ selected_device.version_major }}.{{ selected_device.version_minor }}{{ String.fromCharCode(selected_device.hardware_revision) }}
+              </template>
+            </dd>
+            <dt>Created:</dt>
+            <dd>{{ selected_device.created_time }}</dd>
+            <dt>Last seen:</dt>
+            <dd>{{ selected_device.last_seen_time }}</dd>
+            <dt>Description:</dt>
+            <dd>{{ selected_device.description }}</dd>
+          </dl>
+          <div class="toolbar mt">
+            <Button label="Reset" icon="pi pi-times-circle" severity="secondary" size="small"
+                    :disabled="selected_device.id === undefined" @click="nodeReset(selected_device.id)"/>
+            <Button label="Upload firmware" icon="pi pi-microchip" severity="secondary" size="small" disabled/>
+          </div>
+        </template>
+      </Card>
 
-          <CTable :columns="node_columns" hover>
-            <CTableBody>
-              <CTableRow v-for="node in nodes" :key="node.id" @click="handleNodeRowClick(node.id)">
-                <CTableDataCell>{{ node.id }}</CTableDataCell>
-                <CTableDataCell>{{ node.name }}</CTableDataCell>
-              </CTableRow>
-            </CTableBody>
-          </CTable>
-        </CCardBody>
-      </CCard>
-    </CCol>
-    <CCol sm="auto">
-      <CCard class="mb-4">
-        <CCardBody>
-          <CRow class="pb-3">
-            <CCol class="pl-0">
-              <CRow>
-                <CCol class="col-3">Node id:</CCol>
-                <CCol>{{ selected_device.id }}</CCol>
-              </CRow>
-              <CRow>
-                <CCol class="col-3">Node type:</CCol>
-                <CCol>{{ selected_device.type }}</CCol>
-              </CRow>
-              <CRow>
-                <CCol class="col-3">Node name:</CCol>
-                <CCol>{{ selected_device.name }}</CCol>
-              </CRow>
-              <CRow>
-                <CCol class="col-3">Node version:</CCol>
-                <CCol>
-                  {{ selected_device.version_major }}.{{ selected_device.version_minor }}{{ String.fromCharCode(selected_device.hardware_revision) }}
-                </CCol>
-              </CRow>
-              <CRow>
-                <CCol class="col-3">Created:</CCol>
-                <CCol>{{ selected_device.created_time }}</CCol>
-              </CRow>
-              <CRow>
-                <CCol class="col-3">Last seen:</CCol>
-                <CCol>{{ selected_device.last_seen_time }}</CCol>
-              </CRow>
-              <CRow>
-                <CCol class="col-3">Description:</CCol>
-                <CCol>{{ selected_device.description }}</CCol>
-              </CRow>
-            </CCol>
-          </CRow>
-          <CRow>
-            <CCol>
-              <CButton color="secondary" class="m-1" @click="nodeReset(selected_device.id)">
-                <CIcon icon="cil-xCircle"/>
-                Reset
-              </CButton>
-              <CButton color="secondary" class="m-1" disabled>
-                <CIcon icon="cil-memory"/>
-                Upload firmware
-              </CButton>
-            </CCol>
-          </CRow>
-        </CCardBody>
-      </CCard>
-
-      <CCard class="mb-4">
-        <CCardBody>
-      <CTable :columns="register_columns">
-        <CTableBody>
-          <template v-for="reg in selected_device.registers_list" :key="reg.id">
-            <CTableRow>
-              <CTableHeaderCell scope="row" :rowspan="reg.bits_names.length != 0 ? 2 : 1">{{
-                  reg.number
-                }}
-              </CTableHeaderCell>
-              <CTableDataCell>{{ reg.name }}</CTableDataCell>
-              <CTableDataCell>{{ reg.size }}</CTableDataCell>
-              <CTableDataCell>{{ reg.type }}</CTableDataCell>
-              <CTableDataCell>
-                <CFormInput v-model="reg.val"></CFormInput>
-              </CTableDataCell>
-              <CTableDataCell>
-                <CButtonGroup size="sm">
-                  <CButton :disabled="!reg.readable" @click="registerRead(selected_device.id, reg)">Get</CButton>
-                  <CButton :disabled="!reg.writable" @click="registerWrite(selected_device.id, reg)">Set</CButton>
-                </CButtonGroup>
-              </CTableDataCell>
-
-            </CTableRow>
-            <CTableRow v-if="reg.bits_names.length != 0">
-              <CTableDataCell colspan="5">
-                <CButtonGroup size="sm">
-                  <CFormCheck
-                      :button="{color: 'primary', variant: 'outline'}"
-                      :id="'node_' + selected_device.id + '_reg_' + reg.number + '_bit_' + index"
-                      :label="bit"
-                      :text="bit"
-                      :disabled="!reg.writable"
-                      @change="(event) => handleBitChange(selected_device.id, reg, reg.bits_names.length - 1 - index, event)"
-                      :checked="isBitSet(reg.val, reg.bits_names.length - 1 - index)"
-                      v-for="(bit, index) in reg.bits_names.slice().reverse()" :key="index"/>
-                </CButtonGroup>
-              </CTableDataCell>
-            </CTableRow>
-          </template>
-        </CTableBody>
-      </CTable>
-        </CCardBody>
-      </CCard>
-    </CCol>
-  </CRow>
+      <Card>
+        <template #content>
+          <DataTable :value="selected_device.registers_list" dataKey="number" :expandedRows="expanded_registers"
+                     size="small">
+            <Column field="number" header="#"/>
+            <Column field="name" header="Name"/>
+            <Column field="size" header="Size [b]"/>
+            <Column field="type" header="Type"/>
+            <Column header="Value">
+              <template #body="{ data: reg }">
+                <InputText v-model="reg.val" size="small" fluid/>
+              </template>
+            </Column>
+            <Column header="Action">
+              <template #body="{ data: reg }">
+                <ButtonGroup>
+                  <Button label="Get" size="small" severity="secondary" outlined :disabled="!reg.readable"
+                          @click="registerRead(selected_device.id, reg)"/>
+                  <Button label="Set" size="small" severity="secondary" outlined :disabled="!reg.writable"
+                          @click="registerWrite(selected_device.id, reg)"/>
+                </ButtonGroup>
+              </template>
+            </Column>
+            <template #expansion="{ data: reg }">
+              <ButtonGroup class="bits">
+                <Button v-for="b in bitsOf(reg)" :key="b.bit" :label="b.name" size="small"
+                        :outlined="!isBitSet(reg.val, b.bit)" :disabled="!reg.writable"
+                        :data-bit="reg.number + '.' + b.bit"
+                        @click="handleBitChange(selected_device.id, reg, b.bit, !isBitSet(reg.val, b.bit))"/>
+              </ButtonGroup>
+            </template>
+          </DataTable>
+        </template>
+      </Card>
+    </div>
+  </div>
 </template>
 
 <style scoped>
+.nodes-page > .nodes-list {
+  flex: 0 1 18rem;
+}
 
+.nodes-page > .node-details {
+  flex: 1 1 36rem;
+}
+
+.mt {
+  margin-top: 1rem;
+}
+
+.bits {
+  flex-wrap: wrap;
+}
+
+/* Disabled (read-only register) bits still show their state */
+.bits :deep(.p-button:disabled) {
+  opacity: .75;
+}
 </style>

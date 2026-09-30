@@ -1,9 +1,17 @@
 <script setup>
 
-import {CCardBody} from "@coreui/vue/dist/esm/components/card/index.js";
-import {CCol, CRow} from "@coreui/vue/dist/esm/components/grid/index.js";
 import {computed, inject, onBeforeUnmount, onMounted, ref} from "vue";
-import {CButton} from "@coreui/vue/dist/cjs/components/button/index.js";
+import Card from 'primevue/card'
+import Button from 'primevue/button'
+import ButtonGroup from 'primevue/buttongroup'
+import Checkbox from 'primevue/checkbox'
+import DataTable from 'primevue/datatable'
+import Column from 'primevue/column'
+import InputGroup from 'primevue/inputgroup'
+import InputGroupAddon from 'primevue/inputgroupaddon'
+import InputText from 'primevue/inputtext'
+import Select from 'primevue/select'
+import Tag from 'primevue/tag'
 
 const axios = inject('axios');
 const toasts = inject('toasts');
@@ -99,52 +107,28 @@ const group_all = ref(false)
 
 const is_broadcast = computed(() => isBroadcast(frame.value.type))
 
-const frames_columns = [
-  {
-    key: 'origin',
-    // _props: {scope: 'col'},
-  },
-  {
-    key: 'source_id',
-    label: 'Src',
-    // _props: {scope: 'col'},
-  },
-  {
-    key: 'destination',
-    label: 'Dst / Group',
-    // _props: {scope: 'col'},
-  },
-  {
-    key: 'type',
-    // _props: {scope: 'col'},
-  },
-  {
-    key: 'flags',
-    // _props: {scope: 'col'},
-  },
-  {
-    key: 'seqnum',
-    // _props: {scope: 'col'},
-  },
-  {
-    key: 'data',
-    // _props: {scope: 'col'},
-  },
-  {
-    label: 'Action',
-    // _props: {scope: 'col'},
-  }
-]
+// Type picker options, grouped by frame kind
+const frame_type_groups = [
+  {label: 'Unicast', items: frame_type.filter((t) => !isBroadcast(t.value))},
+  {label: 'Broadcast', items: frame_type.filter((t) => isBroadcast(t.value))},
+].map((g) => ({...g, items: g.items.map((t) => ({...t, text: t.value + ' ' + t.label}))}))
 
 const raw_frame = ref(false)
 
 const frames = ref([])
+const expanded_frames = ref({})
+
+// Frames have no id of their own - number them as they arrive, for the table's row keys
+let frame_key = 0
+function addFrame(f) {
+  frames.value.push({...f, _key: frame_key++})
+}
 
 onMounted(async () => {
   await axios
       .get('/api/frames')
       .then(response => {
-        frames.value = response.data.response
+        response.data.response.forEach(addFrame)
       }).catch(function (error) {
         toasts.value.push({
           title: 'Refresh nodes',
@@ -170,7 +154,7 @@ onMounted(async () => {
 
   sseClient.on('frame', (message, lastEventId) => {
     console.warn('Received a message w/o an event!', message, lastEventId);
-    frames.value.push(message)
+    addFrame(message)
   });
 
   sseClient.on('error', (e) => {
@@ -278,157 +262,199 @@ function copyFrame(f) {
 }
 
 function frameDetails(f) {
-  const {visible, ...rest} = f
+  const {_key, ...rest} = f
   return JSON.stringify(rest)
 }
 
-function toggleFrameDetailsVisibility(item) {
-  item.visible = !item.visible;
+function originName(origin) {
+  return origin.indexOf('@') !== -1 ? origin.substring(0, origin.indexOf('@')) : origin
+}
+
+function toggleFrameDetails(f) {
+  if (expanded_frames.value[f._key]) {
+    delete expanded_frames.value[f._key]
+  } else {
+    expanded_frames.value[f._key] = true
+  }
 }
 
 </script>
 
 <template>
-    <CRow><CCol sm="auto">
-      <CCard class="mb-3">
-        <CCardBody>
-          <!--      <CForm class="row g-3">-->
-          <CForm>
-            <CRow class="mb-3">
-              <!--      <div class="row align-items-center justify-content-center">-->
-              <CCol class="col-auto">
-                <CFormLabel for="inputType">Type</CFormLabel>
-                <CFormSelect id="inputType" size="sm" v-model.number="frame.type">
-                  <optgroup label="Unicast">
-                    <option v-for="t in frame_type.filter((t) => !isBroadcast(t.value))" :key="t.value" :value="t.value">
-                      {{ t.value }} {{ t.label }}
-                    </option>
-                  </optgroup>
-                  <optgroup label="Broadcast">
-                    <option v-for="t in frame_type.filter((t) => isBroadcast(t.value))" :key="t.value" :value="t.value">
-                      {{ t.value }} {{ t.label }}
-                    </option>
-                  </optgroup>
-                </CFormSelect>
-              </CCol>
-              <CCol class="col-auto">
-                <CFormLabel for="inputSource">Source</CFormLabel>
-                <CFormInput id="inputSource" :disabled="!raw_frame" size="sm" maxlength="3" style="max-width: 10ch;"
-                            v-model="frame.source_id"></CFormInput>
-              </CCol>
-              <template v-if="!is_broadcast">
-                <CCol class="col-auto">
-                  <CFormLabel for="inputDestination">Destination</CFormLabel>
-                  <CFormInput id="inputDestination" size="sm" maxlength="3" style="max-width: 10ch;"
-                              v-model="frame.destination_id"></CFormInput>
-                </CCol>
-                <CCol class="col-auto">
-                  <CFormLabel for="inputFlags">Flags</CFormLabel>
-                  <CFormSelect id="inputFlags" size="sm" :options="frame_flags" v-model.number="frame.flags"></CFormSelect>
-                </CCol>
-                <CCol class="col-auto">
-                  <CFormLabel for="inputSeqnum">Seqnum</CFormLabel>
-                  <CFormInput id="inputSeqnum" :disabled="!raw_frame" size="sm" maxlength="2" style="max-width: 10ch;"
-                              v-model="frame.seqnum"></CFormInput>
-                </CCol>
-              </template>
-              <template v-else>
-                <CCol class="col-auto">
-                  <CFormLabel for="inputGroup" title="Broadcast group - node type">Group</CFormLabel>
-                  <CInputGroup size="sm">
-                    <CFormInput id="inputGroup" :disabled="group_all" maxlength="5" style="max-width: 10ch;"
-                                v-model="frame.broadcast_group"></CFormInput>
-                    <CInputGroupText>
-                      <CFormCheck id="group_all_checkbox" label="All" v-model="group_all"/>
-                    </CInputGroupText>
-                  </CInputGroup>
-                </CCol>
-              </template>
-              <CCol class="col-auto">
-                <CFormLabel for="inputData">Data</CFormLabel>
-                <fieldset id="inputData">
-                  <CInputGroup>
-                    <CFormInput name="data[0]" size="sm" maxlength="4" style="max-width: 5ch;"
-                                v-model="frame.data[0]"></CFormInput>
-                    <CFormInput name="data[1]" size="sm" maxlength="4" style="max-width: 5ch;"
-                                v-model="frame.data[1]"></CFormInput>
-                    <CFormInput name="data[2]" size="sm" maxlength="4" style="max-width: 5ch;"
-                                v-model="frame.data[2]"></CFormInput>
-                    <CFormInput name="data[3]" size="sm" maxlength="4" style="max-width: 5ch;"
-                                v-model="frame.data[3]"></CFormInput>
-                    <CFormInput name="data[4]" size="sm" maxlength="4" style="max-width: 5ch;"
-                                v-model="frame.data[4]"></CFormInput>
-                    <CFormInput name="data[5]" size="sm" maxlength="4" style="max-width: 5ch;"
-                                v-model="frame.data[5]"></CFormInput>
-                    <CFormInput name="data[6]" size="sm" maxlength="4" style="max-width: 5ch;"
-                                v-model="frame.data[6]"></CFormInput>
-                    <CFormInput name="data[7]" size="sm" maxlength="4" style="max-width: 5ch;"
-                                v-model="frame.data[7]"></CFormInput>
-                  </CInputGroup>
-                </fieldset>
-              </CCol>
-            </CRow>
-            <CRow class="justify-content-end  ">
-              <CCol class="col-auto mt-1 mt-2 gap-2 d-md-flex">
-                <!--      {% module xsrf_form_html() %}-->
-                <label for="raw_checkbox" title="Allows to set the source (and seqnum for unicast)">
-                  <CFormCheck id="raw_checkbox" label="Raw frame" v-model="raw_frame"/>
+  <div class="page">
+    <Card>
+      <template #content>
+        <form class="frame-form" @submit.prevent="send_frame">
+          <div class="field">
+            <label for="inputType">Type</label>
+            <Select inputId="inputType" v-model="frame.type" :options="frame_type_groups" optionGroupLabel="label"
+                    optionGroupChildren="items" optionLabel="text" optionValue="value" size="small"
+                    class="type-select"/>
+          </div>
+          <div class="field">
+            <label for="inputSource">Source</label>
+            <InputText id="inputSource" :disabled="!raw_frame" size="small" maxlength="3" class="num"
+                       v-model="frame.source_id"/>
+          </div>
+          <template v-if="!is_broadcast">
+            <div class="field">
+              <label for="inputDestination">Destination</label>
+              <InputText id="inputDestination" size="small" maxlength="3" class="num" v-model="frame.destination_id"/>
+            </div>
+            <div class="field">
+              <label for="inputFlags">Flags</label>
+              <Select inputId="inputFlags" v-model="frame.flags" :options="frame_flags" optionLabel="label"
+                      optionValue="value" size="small"/>
+            </div>
+            <div class="field">
+              <label for="inputSeqnum">Seqnum</label>
+              <InputText id="inputSeqnum" :disabled="!raw_frame" size="small" maxlength="2" class="num"
+                         v-model="frame.seqnum"/>
+            </div>
+          </template>
+          <div v-else class="field">
+            <label for="inputGroup" v-tooltip.top="'Broadcast group - node type'">Group</label>
+            <InputGroup class="group-input">
+              <InputText id="inputGroup" :disabled="group_all" size="small" maxlength="5" v-model="frame.broadcast_group"/>
+              <InputGroupAddon>
+                <label class="check">
+                  <Checkbox inputId="group_all_checkbox" v-model="group_all" binary size="small"/>
+                  All
                 </label>
-              </CCol>
-              <CCol class="col-auto d-md-flex">
-                <CButton class="m-1" color="secondary" @click="clean_frame">Clean</CButton>
-                <CButton class="m-1" color="secondary" @click="send_frame">Send frame</CButton>
-              </CCol>
-            </CRow>
-          </CForm>
-        </CCardBody>
-      </CCard>
-      <CCard class="mb-3">
-        <CCardBody>
-          <CTable :columns="frames_columns"  striped>
-            <CTableBody>
-              <template v-for="f in frames" :key="f.id">
-                <CTableRow>
-                  <CTableDataCell>
-                    {{ f.origin.indexOf('@') !== -1 ? f.origin.substring(0, f.origin.indexOf('@')) : f.origin }}
-                  </CTableDataCell>
-                  <CTableDataCell>{{ f.source_id }}</CTableDataCell>
-                  <CTableDataCell>
-                    <CBadge v-if="isBroadcast(f.type)" color="info" title="Broadcast group">
-                      {{ groupLabel(f.broadcast_group) }}
-                    </CBadge>
-                    <template v-else>{{ f.destination_id }}</template>
-                  </CTableDataCell>
-                  <CTableDataCell>{{ typeLabel(f.type) }}</CTableDataCell>
-                  <CTableDataCell>{{ isBroadcast(f.type) ? '' : flagsLabel(f.flags) }}</CTableDataCell>
-                  <CTableDataCell>{{ f.seqnum }}</CTableDataCell>
-                  <CTableDataCell>{{ f.data }}</CTableDataCell>
-                  <CTableDataCell>
-                    <CButtonGroup size="sm">
-                      <CButton color="secondary" @click="copyFrame(f)">Copy</CButton>
-                      <CButton color="secondary" @click="toggleFrameDetailsVisibility(f)">Details</CButton>
-                    </CButtonGroup>
-                  </CTableDataCell>
-                </CTableRow>
-                <CTableRow colspan="8"/>
-                <CTableRow>
-                  <CTableDataCell v-show="f.visible" colspan="8">
-                    <div>
-                      <span class="fw-bold">Origin: </span>{{ f.origin }}
-                    </div>
-                    <div>
-                      <span class="fw-bold">Frame: </span><code>{{ frameDetails(f) }}</code>
-                    </div>
-                  </CTableDataCell>
-                </CTableRow>
-              </template>
-            </CTableBody>
-          </CTable>
-        </CCardBody>
-      </CCard>
-    </CCol></CRow>
+              </InputGroupAddon>
+            </InputGroup>
+          </div>
+          <div class="field">
+            <label>Data</label>
+            <div class="data-inputs">
+              <InputText v-for="i in 8" :key="i" :name="'data[' + (i - 1) + ']'" size="small" maxlength="4"
+                         v-model="frame.data[i - 1]"/>
+            </div>
+          </div>
+          <div class="form-actions">
+            <label class="check" v-tooltip.top="'Allows to set the source (and seqnum for unicast)'">
+              <Checkbox inputId="raw_checkbox" v-model="raw_frame" binary/>
+              Raw frame
+            </label>
+            <Button type="button" label="Clean" severity="secondary" @click="clean_frame"/>
+            <Button type="submit" label="Send frame"/>
+          </div>
+        </form>
+      </template>
+    </Card>
+    <Card>
+      <template #content>
+        <DataTable :value="frames" dataKey="_key" v-model:expandedRows="expanded_frames" size="small" stripedRows>
+          <Column header="Origin">
+            <template #body="{ data: f }">{{ originName(f.origin) }}</template>
+          </Column>
+          <Column field="source_id" header="Src"/>
+          <Column header="Dst / Group">
+            <template #body="{ data: f }">
+              <Tag v-if="isBroadcast(f.type)" :value="String(groupLabel(f.broadcast_group))" severity="info"
+                   v-tooltip.top="'Broadcast group'"/>
+              <template v-else>{{ f.destination_id }}</template>
+            </template>
+          </Column>
+          <Column header="Type">
+            <template #body="{ data: f }">{{ typeLabel(f.type) }}</template>
+          </Column>
+          <Column header="Flags">
+            <template #body="{ data: f }">{{ isBroadcast(f.type) ? '' : flagsLabel(f.flags) }}</template>
+          </Column>
+          <Column field="seqnum" header="Seqnum"/>
+          <Column header="Data">
+            <template #body="{ data: f }">[ {{ f.data.join(', ') }} ]</template>
+          </Column>
+          <Column header="Action">
+            <template #body="{ data: f }">
+              <ButtonGroup>
+                <Button label="Copy" size="small" severity="secondary" @click="copyFrame(f)"/>
+                <Button label="Details" size="small" severity="secondary" @click="toggleFrameDetails(f)"/>
+              </ButtonGroup>
+            </template>
+          </Column>
+          <template #expansion="{ data: f }">
+            <div>
+              <span class="label">Origin: </span>{{ f.origin }}
+            </div>
+            <div>
+              <span class="label">Frame: </span><code>{{ frameDetails(f) }}</code>
+            </div>
+          </template>
+        </DataTable>
+      </template>
+    </Card>
+  </div>
 </template>
 
 <style scoped>
+.frame-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: flex-start;
+}
 
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: .35rem;
+}
+
+.field > label {
+  font-size: .9rem;
+}
+
+.type-select {
+  width: 17rem;
+}
+
+.num {
+  width: 6rem;
+}
+
+.group-input {
+  width: 11rem;
+}
+
+.data-inputs {
+  display: flex;
+}
+
+.data-inputs .p-inputtext {
+  width: 3.2rem;
+  border-radius: 0;
+}
+
+.data-inputs .p-inputtext:first-child {
+  border-radius: 6px 0 0 6px;
+}
+
+.data-inputs .p-inputtext:last-child {
+  border-radius: 0 6px 6px 0;
+}
+
+.data-inputs .p-inputtext + .p-inputtext {
+  margin-left: -1px;
+}
+
+.form-actions {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  margin-left: auto;
+  align-self: flex-end;
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  cursor: pointer;
+}
+
+.label {
+  font-weight: 600;
+}
 </style>
