@@ -6,11 +6,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>H9</title>
     <script>
-        // Apply the theme before the app mounts to avoid a light flash (see src/stores/theme.js)
+        // Apply the theme before the app mounts to avoid a flash (see src/stores/theme.js).
+        // Dark unless the user picked light.
         let userMode = null;
-        try { userMode = localStorage.getItem('h9web-theme'); } catch (e) {}
-        const systemDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-        if (userMode === 'dark' || (userMode !== 'light' && systemDarkMode)) {
+        try { userMode = localStorage.getItem('h9web-color-theme'); } catch (e) {}
+        if (userMode !== 'light') {
             document.documentElement.classList.add('app-dark');
         }
     </script>

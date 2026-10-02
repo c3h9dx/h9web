@@ -1,11 +1,11 @@
-import {inject, onBeforeUnmount, onMounted} from 'vue'
+import {onBeforeUnmount, onMounted, ref} from 'vue'
 
 // Subscribes to h9web server-sent events (/api/events) for the lifetime of the calling component.
 // handlers: {event name: (data) => ...}, e.g. {frame: addFrame}; data arrives parsed from JSON.
+// Returns `connected` (ref) - false while the stream is down; EventSource reconnects by itself.
 export function useEventStream(handlers) {
-  const toasts = inject('toasts')
+  const connected = ref(false)
   let source = null
-  let lost = false
 
   onMounted(() => {
     const filter = Object.keys(handlers).map((e) => 'filter=' + encodeURIComponent(e)).join('&')
@@ -16,18 +16,16 @@ export function useEventStream(handlers) {
     }
 
     source.addEventListener('open', () => {
-      lost = false
+      connected.value = true
     })
     source.addEventListener('error', () => {
-      // EventSource reconnects by itself - report the loss once, not on every retry
-      if (!lost) {
-        lost = true
-        toasts.value.push({title: 'Events', content: 'Connection to h9web lost, reconnecting...'})
-      }
+      connected.value = false
     })
   })
 
   onBeforeUnmount(() => {
     source?.close()
   })
+
+  return {connected}
 }

@@ -19,10 +19,15 @@ function onNavigate(navigate) {
 <template>
   <aside class="sidebar">
     <div class="sidebar-brand">
-      <RouterLink to="/">
-        <svg class="sidebar-logo" :viewBox="'0 0 ' + logo[0]" height="32" v-html="logo[1]"/>
+      <RouterLink to="/" class="brand-link">
+        <svg class="brand-logo" :viewBox="'0 0 ' + logo[0]" height="30" v-html="logo[1]"/>
+        <span class="brand-text">
+          <b>h9web</b>
+          <small>h9 bus control</small>
+        </span>
       </RouterLink>
     </div>
+
     <nav class="sidebar-nav">
       <RouterLink v-for="item in nav" :key="item.to" :to="item.to" custom v-slot="{ href, navigate, isActive }">
         <a :href="href" class="sidebar-link" :class="{ active: isActive }" @click.prevent="onNavigate(navigate)">
@@ -39,27 +44,52 @@ function onNavigate(navigate) {
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: var(--app-sidebar-bg);
-  color: var(--app-sidebar-text);
+  background: var(--app-bg);
+  border-right: 1px solid var(--app-border);
 }
 
 .sidebar-brand {
-  display: flex;
-  align-items: center;
-  height: var(--app-header-height);
-  padding: 0 1rem;
-  border-bottom: 1px solid rgba(255, 255, 255, .1);
+  padding: 1.1rem 1.25rem;
 }
 
-.sidebar-brand a {
+.brand-link {
   display: flex;
+  align-items: center;
+  gap: .7rem;
+  color: var(--app-text);
+  text-decoration: none;
+}
+
+/* The logo is drawn in white - on the light theme show it on a dark badge */
+.brand-logo {
+  flex: none;
+  padding: .25rem;
+  border-radius: 8px;
+  background: #16181c;
+}
+
+.brand-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+}
+
+.brand-text b {
+  font-size: 1.05rem;
+  letter-spacing: .02em;
+}
+
+.brand-text small {
+  font-size: .7rem;
+  color: var(--app-text-muted);
 }
 
 .sidebar-nav {
   display: flex;
   flex-direction: column;
-  gap: .15rem;
-  padding: .5rem;
+  gap: .2rem;
+  padding: .75rem;
+  border-top: 1px solid var(--app-border);
   overflow-y: auto;
 }
 
@@ -67,24 +97,26 @@ function onNavigate(navigate) {
   display: flex;
   align-items: center;
   gap: .85rem;
-  padding: .7rem 1rem;
-  border-radius: 6px;
-  color: inherit;
+  padding: .65rem .9rem;
+  border-radius: 10px;
+  color: var(--app-text-muted);
+  font-weight: 600;
   text-decoration: none;
+  transition: background .12s, color .12s;
 }
 
 .sidebar-link:hover {
-  color: #fff;
-  background: rgba(255, 255, 255, .05);
+  color: var(--app-text);
+  background: color-mix(in srgb, var(--app-text) 5%, transparent);
 }
 
 .sidebar-link.active {
-  color: #fff;
-  background: var(--app-sidebar-active-bg);
+  color: var(--app-accent);
+  background: var(--app-accent-soft);
 }
 
 .sidebar-link i {
-  font-size: 1.1rem;
+  font-size: 1.05rem;
   width: 1.25rem;
   text-align: center;
 }

@@ -1,7 +1,8 @@
 import {defineAsyncComponent} from 'vue'
 
 // Dashboard widget for each h9d device type (the "type" in h9d get_devs_list).
-// A widget gets one prop, `dev`: {name, type, methods, state}.
+// A widget gets one prop, `dev`: {name, type, methods, state, events}
+// (events: the last event of each event_name, for devices that tag their events).
 export const widgets = {
   PowerSwitch: {
     title: 'Power Switch',
@@ -11,9 +12,9 @@ export const widgets = {
     title: 'Antenna Switch',
     component: defineAsyncComponent(() => import('./AntennaSwitch.vue')),
   },
-  ATU: {
-    title: 'ATU',
-    component: defineAsyncComponent(() => import('./ATU.vue')),
+  'S-Match': {
+    title: 'S-Match ATU',
+    component: defineAsyncComponent(() => import('./SMatch.vue')),
   },
 }
 

@@ -1,13 +1,20 @@
 <script setup>
-import {inject, watch} from "vue";
+import {inject, onMounted, watch} from "vue";
+import {useRoute} from 'vue-router'
 import Toast from 'primevue/toast'
 import {useToast} from 'primevue/usetoast'
 
-import AppHeader from '@/components/AppHeader.vue'
 import AppSidebar from '@/components/AppSidebar.vue'
+import AppStatusBar from '@/components/AppStatusBar.vue'
+import AppTerminal from '@/components/AppTerminal.vue'
+import {useEventStream} from '@/composables/useEventStream.js'
 import {useSidebarStore} from '@/stores/sidebar.js'
+import {useStatsStore} from '@/stores/stats.js'
 
+const route = useRoute()
 const sidebar = useSidebarStore()
+const statsStore = useStatsStore()
+const axios = inject('axios');
 
 // Views report errors by pushing {title, content} into the shared `toasts` array (see main.js);
 // show each one as a PrimeVue toast and empty the queue.
@@ -20,6 +27,24 @@ watch(() => toasts.value.length, () => {
   }
 })
 
+// Stats feed the status bar on every page, so they are subscribed here once
+const {connected} = useEventStream({
+  stats: (message) => {
+    statsStore.stats = message
+  }
+})
+watch(connected, (value) => {
+  statsStore.streamConnected = value
+})
+
+onMounted(() => {
+  axios.get('/api/stats').then((response) => {
+    statsStore.stats = response.data.response
+  }).catch(() => {
+    // the status bar shows the connection state
+  })
+})
+
 </script>
 
 <template>
@@ -29,11 +54,13 @@ watch(() => toasts.value.length, () => {
     </div>
     <div class="layout-backdrop" @click="sidebar.toggleVisible(false)"/>
     <div class="layout-main">
-      <AppHeader/>
+      <AppStatusBar/>
       <main class="layout-content">
+        <h1 class="page-title">{{ route.name }}</h1>
         <router-view/>
       </main>
     </div>
+    <AppTerminal/>
     <Toast position="bottom-right"/>
   </div>
 </template>
@@ -59,9 +86,9 @@ watch(() => toasts.value.length, () => {
 .layout-content {
   flex: 1;
   width: 100%;
-  max-width: 1320px;
+  max-width: 1240px;
   margin: 0 auto;
-  padding: 0 1rem 2rem;
+  padding: 2rem 1.5rem 3rem;
 }
 
 .layout-backdrop {
@@ -94,7 +121,11 @@ watch(() => toasts.value.length, () => {
     position: fixed;
     inset: 0;
     z-index: 15;
-    background: rgba(0, 0, 0, .4);
+    background: rgba(0, 0, 0, .5);
+  }
+
+  .layout-content {
+    padding: 1.25rem 1rem 2rem;
   }
 }
 </style>

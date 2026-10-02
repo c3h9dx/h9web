@@ -12,8 +12,8 @@ class Dashboard(APIHandler):
     the device list, types, methods and current state come from h9d on every GET."""
 
     GRID_COLS = 12
-    TILE_W = 3
-    TILE_H = 4
+    TILE_W = 4
+    TILE_H = 5
     LAYOUT_KEYS = ("i", "x", "y", "w", "h")
 
     _layout = None  # cached content of dashboard_file

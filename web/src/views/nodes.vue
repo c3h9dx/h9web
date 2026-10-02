@@ -181,8 +181,13 @@ async function handleBitChange(node_id, reg, bit, value) {
           <DataTable :value="selected_device.registers_list" dataKey="number" :expandedRows="expanded_registers"
                      size="small">
             <Column field="number" header="#"/>
-            <Column field="name" header="Name"/>
-            <Column field="size" header="Size [b]"/>
+            <Column header="Name">
+              <template #body="{ data: reg }">
+                {{ reg.name }}
+                <div v-if="reg.description" class="reg-description muted">{{ reg.description }}</div>
+              </template>
+            </Column>
+            <Column field="size" header="Size [B]"/>
             <Column field="type" header="Type"/>
             <Column header="Value">
               <template #body="{ data: reg }">
@@ -225,6 +230,10 @@ async function handleBitChange(node_id, reg, bit, value) {
 
 .mt {
   margin-top: 1rem;
+}
+
+.reg-description {
+  font-size: .8rem;
 }
 
 .bits {

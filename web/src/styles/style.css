@@ -1,23 +1,28 @@
-/* Global layout and helpers. Component styling comes from the PrimeVue Aura theme;
+/* Global layout and helpers. Component styling comes from the PrimeVue Aura theme (preset in main.js);
    colors below are built on its CSS variables so they follow the dark mode switch (.app-dark). */
 
 :root {
-  --app-bg: var(--p-surface-100);
+  --app-bg: var(--p-surface-50);
   --app-surface: var(--p-content-background);
   --app-border: var(--p-content-border-color);
   --app-text: var(--p-text-color);
   --app-text-muted: var(--p-text-muted-color);
-  --app-sidebar-bg: #212631;
-  --app-sidebar-text: rgba(255, 255, 255, .7);
-  --app-sidebar-active-bg: rgba(255, 255, 255, .08);
-  --app-sidebar-width: 16rem;
-  --app-header-height: 4rem;
+  --app-accent: var(--p-primary-600);
+  --app-accent-soft: color-mix(in srgb, var(--p-primary-500) 12%, transparent);
+  --app-danger: var(--p-red-500);
+  --app-sidebar-width: 15rem;
+  --app-statusbar-height: 2.4rem;
+  --app-radius: 12px;
   --app-gap: 1rem;
 }
 
 .app-dark {
   --app-bg: var(--p-surface-950);
-  --app-sidebar-bg: #1d222b;
+  --app-surface: var(--p-surface-900);
+  --app-border: var(--p-surface-700);
+  --app-accent: var(--p-primary-400);
+  --app-accent-soft: color-mix(in srgb, var(--p-primary-500) 16%, transparent);
+  --app-danger: var(--p-red-400);
 }
 
 *, *::before, *::after {
@@ -34,11 +39,12 @@ body {
   color: var(--app-text);
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
 }
 
 h1, h2, h3, h4 {
   margin: 0 0 .5rem;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 code {
@@ -46,7 +52,21 @@ code {
   word-break: break-all;
 }
 
+/* Cards: flat surface with a thin border, as in the rest of the layout */
+.p-card {
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius);
+  box-shadow: none;
+}
+
 /* --- Page building blocks --- */
+
+.page-title {
+  margin: 0 0 1.5rem;
+  font-size: 1.75rem;
+  letter-spacing: -.01em;
+}
 
 .page {
   display: flex;
@@ -67,6 +87,26 @@ code {
   min-width: 0;
 }
 
+/* Grid of stat tiles (components/StatTile.vue) */
+.tile-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: var(--app-gap);
+}
+
+/* Small uppercase caption: tile labels, section headings */
+.caption {
+  font-size: .7rem;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--app-text-muted);
+}
+
+.section-title {
+  margin: .75rem 0 -.25rem;
+}
+
 .toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -78,7 +118,7 @@ code {
   color: var(--app-text-muted);
 }
 
-/* Label / value list, e.g. node info and stats */
+/* Label / value list, e.g. node info */
 .kv {
   display: grid;
   grid-template-columns: max-content 1fr;
@@ -99,26 +139,60 @@ code {
 .surface-card {
   background: var(--app-surface);
   border: 1px solid var(--app-border);
-  border-radius: var(--p-card-border-radius, 12px);
-  box-shadow: var(--p-card-shadow);
+  border-radius: var(--app-radius);
   color: var(--app-text);
 }
 
-/* Header + body of a dashboard device widget (views/dev/*.vue) */
+/* Header + body of a dashboard tile (views/dashboard.vue) */
 .dev-header {
-  padding: .6rem 1rem;
-  border-bottom: 1px solid var(--app-border);
-  font-weight: 600;
-}
-
-.dev-header small {
-  font-weight: 400;
-  color: var(--app-text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .5rem;
+  padding: 1rem 1.25rem 0;
 }
 
 .dev-body {
-  padding: 1rem;
+  padding: .75rem 1.25rem 1.25rem;
   display: flex;
   flex-direction: column;
   gap: .75rem;
+}
+
+/* Pill with a status dot, e.g. device name on a dashboard tile */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  padding: .15rem .65rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--app-text-muted) 14%, transparent);
+  color: var(--app-text-muted);
+  font-size: .78rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.pill::before {
+  content: "";
+  width: .4rem;
+  height: .4rem;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+/* Big number with a small unit */
+.big-value {
+  font-size: 1.9rem;
+  font-weight: 700;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.01em;
+}
+
+.big-value .unit {
+  margin-left: .2rem;
+  font-size: .85rem;
+  font-weight: 600;
+  color: var(--app-text-muted);
 }

@@ -14,6 +14,7 @@ class Stats(BaseAPIHandler):
             'version': None,
             'commit': None,
             'uptime': None,
+            'uptime_s': None,
             'bus': {
                 'received_frames': None,
                 'send_frames': None,
@@ -56,7 +57,7 @@ class Stats(BaseAPIHandler):
             res = await h9d.call_request(rpc_req)
             # logging.debug("### 1.2 ###")
             cls.stats['h9d']['version'] = res['version']
-            cls.stats['h9d']['commit'] = res['commit_sha']
+            cls.stats['h9d']['commit'] = res.get('commit_sha')  # not reported by h9d since v0.4
         except Exception as e:
             # logging.error(e)
             cls.stats['h9d']['version'] = None
@@ -85,6 +86,7 @@ class Stats(BaseAPIHandler):
         cls.stats['h9d']['tcp_clients'] = []
 
         cls.stats['h9d']['uptime'] = None
+        cls.stats['h9d']['uptime_s'] = None
         cls.stats['h9d']['bus']['received_frames'] = None
         cls.stats['h9d']['bus']['send_frames'] = None
         cls.stats['h9d']['bus']['endpoints'] = {}
@@ -103,6 +105,7 @@ class Stats(BaseAPIHandler):
             res = await h9d.call_request(rpc_req)
             # logging.debug("### 2.2 ###")
             cls.stats['h9d']['uptime'] = Stats.uptime2human(res['uptime'])
+            cls.stats['h9d']['uptime_s'] = res['uptime']
             cls.stats['h9d']['bus']['received_frames'] = res['bus']['received_frames']
             cls.stats['h9d']['bus']['send_frames'] = res['bus']['send_frames']
             for endpoint in res['bus']['endpoints']:
@@ -110,13 +113,13 @@ class Stats(BaseAPIHandler):
 
                 last_received_frames = endpoint_tmp.get('received_frames', None)
                 if last_received_frames is not None:
-                    endpoint_tmp['received_frames_per_s'] = (endpoint['received_frames'] - last_received_frames) / period_ms / 1000
+                    endpoint_tmp['received_frames_per_s'] = (endpoint['received_frames'] - last_received_frames) / (period_ms / 1000)
                 else:
                     endpoint_tmp['received_frames_per_s'] = None
 
                 last_send_frames = endpoint_tmp.get('send_frames', None)
                 if last_send_frames is not None:
-                    endpoint_tmp['send_frames_per_s'] = (endpoint['send_frames'] - last_send_frames) / period_ms / 1000
+                    endpoint_tmp['send_frames_per_s'] = (endpoint['send_frames'] - last_send_frames) / (period_ms / 1000)
                 else:
                     endpoint_tmp['send_frames_per_s'] = None
 
@@ -128,6 +131,7 @@ class Stats(BaseAPIHandler):
             # logging.error(e)
             # raise e
             cls.stats['h9d']['uptime'] = None
+            cls.stats['h9d']['uptime_s'] = None
             cls.stats['h9d']['bus']['received_frames'] = None
             cls.stats['h9d']['bus']['send_frames'] = None
             cls.stats['h9d']['bus']['endpoints'] = {}

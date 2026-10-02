@@ -15,20 +15,39 @@ import 'primeicons/primeicons.css'
 
 import './styles/style.css'
 
+// Green accent on near-black graphite surfaces (dark is the default theme, see index.html)
 const H9Preset = definePreset(Aura, {
   semantic: {
     primary: {
-      50: '{indigo.50}',
-      100: '{indigo.100}',
-      200: '{indigo.200}',
-      300: '{indigo.300}',
-      400: '{indigo.400}',
-      500: '{indigo.500}',
-      600: '{indigo.600}',
-      700: '{indigo.700}',
-      800: '{indigo.800}',
-      900: '{indigo.900}',
-      950: '{indigo.950}',
+      50: '{emerald.50}',
+      100: '{emerald.100}',
+      200: '{emerald.200}',
+      300: '{emerald.300}',
+      400: '{emerald.400}',
+      500: '{emerald.500}',
+      600: '{emerald.600}',
+      700: '{emerald.700}',
+      800: '{emerald.800}',
+      900: '{emerald.900}',
+      950: '{emerald.950}',
+    },
+    colorScheme: {
+      dark: {
+        surface: {
+          0: '#ffffff',
+          50: '#f3f4f6',
+          100: '#e4e6ea',
+          200: '#c7cbd1',
+          300: '#9aa0a8',
+          400: '#6e747d',
+          500: '#4c5159',
+          600: '#353940',
+          700: '#272b31',
+          800: '#1c1f24',
+          900: '#16181c',
+          950: '#0e1013',
+        },
+      },
     },
   },
 })
