@@ -6,6 +6,11 @@ export default [
     icon: 'pi pi-th-large',
   },
   {
+    name: 'Devs',
+    to: '/devs',
+    icon: 'pi pi-box',
+  },
+  {
     name: 'Nodes',
     to: '/nodes',
     icon: 'pi pi-sitemap',

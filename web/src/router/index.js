@@ -23,6 +23,12 @@ const router = createRouter({
                     meta: { requiresAuth: true },
                 },
                 {
+                    path: '/devs',
+                    name: 'Devs',
+                    component: () => import( '@/views/devs.vue' ),
+                    meta: { requiresAuth: true },
+                },
+                {
                     path: '/nodes',
                     name: 'Nodes',
                     component: () => import( '@/views/nodes.vue' ),

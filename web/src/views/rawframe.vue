@@ -1,17 +1,14 @@
 <script setup>
 
-import {computed, inject, onMounted, ref} from "vue";
+import {computed, inject, onBeforeUnmount, onMounted, ref, shallowRef} from "vue";
 import Card from 'primevue/card'
 import Button from 'primevue/button'
-import ButtonGroup from 'primevue/buttongroup'
 import Checkbox from 'primevue/checkbox'
-import DataTable from 'primevue/datatable'
-import Column from 'primevue/column'
 import InputGroup from 'primevue/inputgroup'
 import InputGroupAddon from 'primevue/inputgroupaddon'
 import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
-import Tag from 'primevue/tag'
+import {useRoute} from 'vue-router'
 import {useEventStream} from '@/composables/useEventStream.js'
 
 const axios = inject('axios');
@@ -114,29 +111,96 @@ const frame_type_groups = [
 
 const raw_frame = ref(false)
 
-const frames = ref([])
+// The bus can deliver hundreds of frames per second - rendering each one separately into an ever
+// growing table froze the page. Frames are buffered and shown in batches, newest first, and only
+// the last MAX_FRAMES are kept. The list is a shallowRef of plain objects: no deep reactivity needed.
+const MAX_FRAMES = 500
+const FLUSH_MS = 200
+
+const frames = shallowRef([])
 const expanded_frames = ref({})
+const paused = ref(false)
+const received = ref(0)   // all frames since the page was opened (or cleared)
+
+let pending = []          // frames waiting for the next flush (newest last)
+let received_count = 0
+let flush_timer = null
 
 // Frames have no id of their own - number them as they arrive, for the table's row keys
 let frame_key = 0
 function addFrame(f) {
-  frames.value.push({...f, _key: frame_key++})
+  pending.push({...f, _key: frame_key++})
+  if (pending.length > MAX_FRAMES) {
+    pending.splice(0, pending.length - MAX_FRAMES)
+  }
+  received_count++
+  if (flush_timer === null) {
+    flush_timer = setTimeout(flushFrames, FLUSH_MS)
+  }
+}
+
+function flushFrames() {
+  flush_timer = null
+  received.value = received_count
+  if (paused.value || !pending.length) {
+    return
+  }
+  const next = pending.reverse().concat(frames.value).slice(0, MAX_FRAMES)
+  pending = []
+  frames.value = next
+
+  // Forget expanded rows that dropped off the list
+  const keys = new Set(next.map((f) => f._key))
+  for (const key of Object.keys(expanded_frames.value)) {
+    if (!keys.has(Number(key))) {
+      delete expanded_frames.value[key]
+    }
+  }
+}
+
+function togglePause() {
+  paused.value = !paused.value
+  if (!paused.value) {
+    flushFrames()
+  }
+}
+
+function clearFrames() {
+  pending = []
+  frames.value = []
+  expanded_frames.value = {}
+  received_count = 0
+  received.value = 0
 }
 
 useEventStream({frame: addFrame})
+
+// /rawframe?dst=<node id> (link from Nodes) pre-fills a unicast frame to that node
+const route = useRoute()
+const dst = Number(route.query.dst)
+if (route.query.dst !== undefined && Number.isInteger(dst) && dst >= 0 && dst <= ID_MAX) {
+  if (isBroadcast(frame.value.type)) {
+    frame.value.type = 11  // GET_REG
+  }
+  frame.value.destination_id = dst
+}
 
 onMounted(async () => {
   await axios
       .get('/api/frames')
       .then(response => {
         response.data.response.forEach(addFrame)
+        flushFrames()
       }).catch(function (error) {
         toasts.value.push({
-          title: 'Refresh nodes',
+          title: 'Refresh frames',
           content: error
         })
       })
+})
 
+onBeforeUnmount(() => {
+  clearTimeout(flush_timer)
 })
 
 function clean_frame() {
@@ -310,45 +374,64 @@ function toggleFrameDetails(f) {
     </Card>
     <Card>
       <template #content>
-        <DataTable :value="frames" dataKey="_key" v-model:expandedRows="expanded_frames" size="small" stripedRows>
-          <Column header="Origin">
-            <template #body="{ data: f }">{{ originName(f.origin) }}</template>
-          </Column>
-          <Column field="source_id" header="Src"/>
-          <Column header="Dst / Group">
-            <template #body="{ data: f }">
-              <Tag v-if="isBroadcast(f.type)" :value="String(groupLabel(f.broadcast_group))" severity="info"
-                   v-tooltip.top="'Broadcast group'"/>
-              <template v-else>{{ f.destination_id }}</template>
-            </template>
-          </Column>
-          <Column header="Type">
-            <template #body="{ data: f }">{{ typeLabel(f.type) }}</template>
-          </Column>
-          <Column header="Flags">
-            <template #body="{ data: f }">{{ isBroadcast(f.type) ? '' : flagsLabel(f.flags) }}</template>
-          </Column>
-          <Column field="seqnum" header="Seqnum"/>
-          <Column header="Data">
-            <template #body="{ data: f }">[ {{ f.data.join(', ') }} ]</template>
-          </Column>
-          <Column header="Action">
-            <template #body="{ data: f }">
-              <ButtonGroup>
-                <Button label="Copy" size="small" severity="secondary" @click="copyFrame(f)"/>
-                <Button label="Details" size="small" severity="secondary" @click="toggleFrameDetails(f)"/>
-              </ButtonGroup>
-            </template>
-          </Column>
-          <template #expansion="{ data: f }">
-            <div>
-              <span class="label">Origin: </span>{{ f.origin }}
-            </div>
-            <div>
-              <span class="label">Frame: </span><code>{{ frameDetails(f) }}</code>
-            </div>
-          </template>
-        </DataTable>
+        <div class="toolbar frames-toolbar">
+          <Button :label="paused ? 'Resume' : 'Pause'" :icon="paused ? 'pi pi-play' : 'pi pi-pause'" size="small"
+                  :severity="paused ? undefined : 'secondary'" @click="togglePause"/>
+          <Button label="Clear" icon="pi pi-trash" size="small" severity="secondary" @click="clearFrames"/>
+          <span class="muted">
+            {{ received }} received<template v-if="received > MAX_FRAMES">, last {{ MAX_FRAMES }} shown</template>
+            <template v-if="paused"> · paused</template>
+          </span>
+        </div>
+        <!-- Plain table, not DataTable: it is re-rendered several times a second under heavy traffic.
+             One <tbody> per frame with v-memo, so rows already on screen are not re-rendered. -->
+        <div class="frames-scroll">
+          <table class="frames">
+            <thead>
+            <tr>
+              <th>Origin</th>
+              <th>Src</th>
+              <th>Dst / Group</th>
+              <th>Type</th>
+              <th>Flags</th>
+              <th>Seqnum</th>
+              <th>Data</th>
+              <th>Action</th>
+            </tr>
+            </thead>
+            <tbody v-for="f in frames" :key="f._key" v-memo="[f, !!expanded_frames[f._key]]">
+            <tr>
+              <td>{{ originName(f.origin) }}</td>
+              <td>{{ f.source_id }}</td>
+              <td>
+                <span v-if="isBroadcast(f.type)" class="group-tag" title="Broadcast group">{{ groupLabel(f.broadcast_group) }}</span>
+                <template v-else>{{ f.destination_id }}</template>
+              </td>
+              <td>{{ typeLabel(f.type) }}</td>
+              <td>{{ isBroadcast(f.type) ? '' : flagsLabel(f.flags) }}</td>
+              <td>{{ f.seqnum }}</td>
+              <td>[ {{ f.data.join(', ') }} ]</td>
+              <td class="actions">
+                <button type="button" class="row-btn" @click="copyFrame(f)">Copy</button>
+                <button type="button" class="row-btn" :class="{ active: expanded_frames[f._key] }"
+                        @click="toggleFrameDetails(f)">Details
+                </button>
+              </td>
+            </tr>
+            <tr v-if="expanded_frames[f._key]" class="details">
+              <td colspan="8">
+                <div>
+                  <span class="label">Origin: </span>{{ f.origin }}
+                </div>
+                <div>
+                  <span class="label">Frame: </span><code>{{ frameDetails(f) }}</code>
+                </div>
+              </td>
+            </tr>
+            </tbody>
+          </table>
+          <p v-if="!frames.length" class="muted empty">No frames yet.</p>
+        </div>
       </template>
     </Card>
   </div>
@@ -422,6 +505,92 @@ function toggleFrameDetails(f) {
 
 .label {
   font-weight: 600;
+}
+
+.frames-toolbar {
+  margin-bottom: .75rem;
+}
+
+.frames-scroll {
+  max-height: 65vh;
+  overflow: auto;
+}
+
+.frames {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: .9rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.frames th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: .55rem .75rem;
+  background: var(--app-surface);
+  border-bottom: 1px solid var(--app-border);
+  text-align: left;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.frames td {
+  padding: .4rem .75rem;
+  border-bottom: 1px solid var(--app-border);
+  white-space: nowrap;
+}
+
+.frames tbody:nth-of-type(even) > tr:first-child {
+  background: color-mix(in srgb, var(--app-text) 3%, transparent);
+}
+
+.frames tr.details td {
+  white-space: normal;
+}
+
+.group-tag {
+  display: inline-block;
+  min-width: 1.6rem;
+  padding: .05rem .45rem;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--p-sky-500) 18%, transparent);
+  color: var(--p-sky-400);
+  font-size: .8rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.actions {
+  display: flex;
+  gap: 1px;
+}
+
+.row-btn {
+  padding: .25rem .6rem;
+  border: none;
+  background: color-mix(in srgb, var(--app-text) 8%, transparent);
+  color: var(--app-text);
+  font: inherit;
+  font-size: .8rem;
+  cursor: pointer;
+}
+
+.row-btn:first-child {
+  border-radius: 6px 0 0 6px;
+}
+
+.row-btn:last-child {
+  border-radius: 0 6px 6px 0;
+}
+
+.row-btn:hover,
+.row-btn.active {
+  background: color-mix(in srgb, var(--app-text) 16%, transparent);
+}
+
+.empty {
+  margin: 1rem 0 0;
 }
 </style>
 

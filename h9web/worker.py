@@ -131,11 +131,27 @@ class Worker(object):
         )
         if self.handler:
             self.loop.remove_handler(self.fd)
-            self.handler.close(reason=reason)
 
         os.close(self.fd)
-        os.kill(self.pid, signal.SIGTERM)
-        logging.info('Kill subprocess {}'.format(self.pid))
+        try:
+            os.kill(self.pid, signal.SIGTERM)
+            logging.info('Kill subprocess {}'.format(self.pid))
+        except ProcessLookupError:
+            pass
+        self._reap()
 
-        #clear_worker(self, clients)
-        logging.debug(clients)
+        if self.handler:
+            # the handler decides what next: restart h9cli or nothing if the websocket is gone
+            self.handler.on_cli_exit(reason)
+
+    def _reap(self, attempts=10):
+        """Collect the exit status of the child, otherwise it stays as a zombie process."""
+        try:
+            pid, _ = os.waitpid(self.pid, os.WNOHANG)
+        except ChildProcessError:
+            return
+        if pid == 0 and attempts > 0:
+            self.loop.call_later(0.5, self._reap, attempts - 1)
+        elif pid == 0:
+            os.kill(self.pid, signal.SIGKILL)
+            self.loop.call_later(0.5, self._reap, 0)

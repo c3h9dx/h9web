@@ -3,6 +3,7 @@
 import {computed} from "vue";
 
 import {formatNumber, formatUptime, useStatsStore} from '@/stores/stats.js'
+import {formatDateTime} from '@/utils/format.js'
 
 // Kept up to date by the layout (stats server-sent events)
 const statsStore = useStatsStore()
@@ -74,7 +75,7 @@ function yesNo(value) {
             <dt>Remote</dt>
             <dd>{{ client.remote_address }}:{{ client.remote_port }}</dd>
             <dt>Connected at</dt>
-            <dd>{{ (new Date(client.connection_time)).toLocaleString() }}</dd>
+            <dd>{{ formatDateTime(client.connection_time) }}</dd>
             <dt>Authenticated</dt>
             <dd>{{ yesNo(client.authenticated) }}</dd>
             <dt>Frame subscription</dt>

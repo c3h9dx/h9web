@@ -8,9 +8,13 @@ export const widgets = {
     title: 'Power Switch',
     component: defineAsyncComponent(() => import('./PowerSwitch.vue')),
   },
-  AntennaSwitch: {
+  'Antenna switch': {
     title: 'Antenna Switch',
     component: defineAsyncComponent(() => import('./AntennaSwitch.vue')),
+  },
+  'Shack ctrl': {
+    title: 'Shack Control',
+    component: defineAsyncComponent(() => import('./ShackCtrl.vue')),
   },
   'S-Match': {
     title: 'S-Match ATU',

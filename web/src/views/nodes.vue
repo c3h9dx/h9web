@@ -1,14 +1,19 @@
 <script setup>
 import {computed, inject, onMounted, ref} from "vue";
+import {RouterLink, useRoute} from 'vue-router'
 import Card from 'primevue/card'
 import Button from 'primevue/button'
 import ButtonGroup from 'primevue/buttongroup'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import InputText from 'primevue/inputtext'
+import Tag from 'primevue/tag'
+
+import {formatDateTime} from '@/utils/format.js'
 
 const axios = inject('axios');
 const toasts = inject('toasts');
+const route = useRoute()
 
 const nodes = ref([])
 
@@ -89,6 +94,12 @@ async function nodeReset(node_id) {
 
 onMounted(async () => {
   await refreshNodesList()
+  // /nodes?node=<id> (e.g. a link from Devs) opens that node
+  const id = Number(route.query.node)
+  if (route.query.node !== undefined && !isNaN(id)) {
+    selected_node.value = nodes.value.find((n) => n.id === id) ?? null
+    await handleNodeRowClick(id)
+  }
 })
 
 async function handleNodeRowClick(id) {
@@ -103,6 +114,54 @@ async function handleNodeRowClick(id) {
         })
       })
 }
+
+// Node info as sent by h9d get_node_info (h9can/include/h9def.h)
+const RESET_REASONS = ['unknown', 'power on', 'watchdog', 'brown-out', 'external reset', 'software']
+const NODE_FLAG_RESET_REASON_MASK = 0x0007
+const NODE_FLAG_BL_PRESENT = 0x0008
+const NODE_FLAG_BL_MISMATCH = 0x0010
+const NODE_FLAG_DEFAULT_ID = 0x0020
+const NODE_FLAG_CAN_ERROR_WARNING = 0x0040
+const NODE_FLAG_CAN_TX_FRAME_LOSS = 0x0080
+const NODE_FLAG_CAN_RX_FRAME_LOSS = 0x0100
+
+const node_loaded = computed(() => selected_device.value.id !== undefined)
+
+const node_version = computed(() => {
+  const d = selected_device.value
+  return [d.version_major, d.version_minor, d.version_patch].map((v) => v ?? 0).join('.')
+})
+
+// PCB revision letter + BOM revision number, e.g. A0
+const pcb_revision = computed(() => {
+  const d = selected_device.value
+  const pcb = d.hardware_revision >= 0x20 ? String.fromCharCode(d.hardware_revision) : '?'
+  return pcb + (d.bom_revision ?? '')
+})
+
+const reset_reason = computed(() => {
+  const d = selected_device.value
+  const reason = d.reset_reason ?? (d.flags & NODE_FLAG_RESET_REASON_MASK)
+  return RESET_REASONS[reason] ?? `unknown (${reason})`
+})
+
+// Bootloader state and CAN problems reported in the node flags
+const node_flags = computed(() => {
+  const flags = selected_device.value.flags ?? 0
+  const tags = []
+  if (flags & NODE_FLAG_BL_PRESENT) {
+    tags.push(flags & NODE_FLAG_BL_MISMATCH
+        ? {text: 'bootloader mismatch', severity: 'danger'}
+        : {text: 'bootloader', severity: 'secondary'})
+  } else {
+    tags.push({text: 'no bootloader', severity: 'secondary'})
+  }
+  if (flags & NODE_FLAG_DEFAULT_ID) tags.push({text: 'default id', severity: 'warn'})
+  if (flags & NODE_FLAG_CAN_ERROR_WARNING) tags.push({text: 'CAN error warning', severity: 'warn'})
+  if (flags & NODE_FLAG_CAN_TX_FRAME_LOSS) tags.push({text: 'CAN TX frame loss', severity: 'danger'})
+  if (flags & NODE_FLAG_CAN_RX_FRAME_LOSS) tags.push({text: 'CAN RX frame loss', severity: 'danger'})
+  return tags
+})
 
 function isBitSet(reg, bit) {
   return (reg & (1 << bit)) !== 0
@@ -150,21 +209,32 @@ async function handleBitChange(node_id, reg, bit, value) {
         <template #content>
           <dl class="kv">
             <dt>Node id:</dt>
-            <dd>{{ selected_device.id }}</dd>
+            <dd>
+              <RouterLink v-if="node_loaded" :to="{ path: '/rawframe', query: { dst: selected_device.id } }"
+                          class="node-link" v-tooltip.top="'Send a frame to this node'">
+                {{ selected_device.id }}
+              </RouterLink>
+            </dd>
             <dt>Node type:</dt>
             <dd>{{ selected_device.type }}</dd>
             <dt>Node name:</dt>
             <dd>{{ selected_device.name }}</dd>
-            <dt>Node version:</dt>
-            <dd>
-              <template v-if="selected_device.id !== undefined">
-                {{ selected_device.version_major }}.{{ selected_device.version_minor }}{{ String.fromCharCode(selected_device.hardware_revision) }}
+            <dt>Firmware version:</dt>
+            <dd>{{ node_loaded ? node_version : '' }}</dd>
+            <dt>PCB revision:</dt>
+            <dd>{{ node_loaded ? pcb_revision : '' }}</dd>
+            <dt>Reset reason:</dt>
+            <dd>{{ node_loaded ? reset_reason : '' }}</dd>
+            <dt>Flags:</dt>
+            <dd class="flags">
+              <template v-if="node_loaded">
+                <Tag v-for="t in node_flags" :key="t.text" :value="t.text" :severity="t.severity"/>
               </template>
             </dd>
             <dt>Created:</dt>
-            <dd>{{ selected_device.created_time }}</dd>
+            <dd>{{ node_loaded ? formatDateTime(selected_device.created_time) : '' }}</dd>
             <dt>Last seen:</dt>
-            <dd>{{ selected_device.last_seen_time }}</dd>
+            <dd>{{ node_loaded ? formatDateTime(selected_device.last_seen_time) : '' }}</dd>
             <dt>Description:</dt>
             <dd>{{ selected_device.description }}</dd>
           </dl>
@@ -230,6 +300,23 @@ async function handleBitChange(node_id, reg, bit, value) {
 
 .mt {
   margin-top: 1rem;
+}
+
+.node-link {
+  color: var(--app-accent);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.node-link:hover {
+  text-decoration: underline;
+}
+
+.flags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .35rem;
 }
 
 .reg-description {

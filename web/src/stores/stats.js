@@ -7,8 +7,9 @@ export const useStatsStore = defineStore('stats', () => {
   const stats = ref(null)
   const streamConnected = ref(false)
 
-  // h9web reports no uptime while it has no connection to h9d
-  const h9dConnected = computed(() => stats.value?.h9d?.uptime_s != null)
+  // h9web fills in the h9d version right after connecting to h9d and clears it on disconnect
+  // (uptime comes only with the periodic refresh, up to 10 s later)
+  const h9dConnected = computed(() => stats.value?.h9d?.version != null || stats.value?.h9d?.uptime_s != null)
 
   return {stats, streamConnected, h9dConnected}
 })

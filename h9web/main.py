@@ -14,7 +14,7 @@ from h9web.stats import Stats
 from h9web.frames import Frames
 from h9web.nodes import Nodes, NodesDiscovery
 from h9web.node import GetNodeInfo, NodeRegister, NodeRegisterBit, NodeReset
-from h9web.dev import Dev
+from h9web.dev import Dev, DevInfo, DevsList
 from h9web.dashboard import Dashboard
 
 class Application(tornado.web.Application):
@@ -33,15 +33,19 @@ class Application(tornado.web.Application):
             (r'/api/node/([0-9]+)/reset', NodeReset, dict(h9d_int=h9d_int)),
             (r'/api/node/([0-9]+)/reg/([0-9]+)', NodeRegister, dict(h9d_int=h9d_int)),
             (r'/api/node/([0-9]+)/reg/([0-9]+)/bit/([0-9]+)', NodeRegisterBit, dict(h9d_int=h9d_int)),
-            (r'/api/dev/([A-Za-z0-9_]+)/([A-Za-z0-9_]+)', Dev, dict(h9d_int=h9d_int)),
+            (r'/api/devs', DevsList, dict(h9d_int=h9d_int)),
+            (r'/api/dev/([A-Za-z0-9_.-]+)', DevInfo, dict(h9d_int=h9d_int)),
+            (r'/api/dev/([A-Za-z0-9_.-]+)/([A-Za-z0-9_]+)', Dev, dict(h9d_int=h9d_int)),
             (r'/api/dashboard', Dashboard, dict(h9d_int=h9d_int)),
             (r"/dashboard", tornado.web.RedirectHandler, {"url": "/dashboard/"}),
             (r"/nodes", tornado.web.RedirectHandler, {"url": "/nodes/"}),
+            (r"/devs", tornado.web.RedirectHandler, {"url": "/devs/"}),
             (r"/rawframe", tornado.web.RedirectHandler, {"url": "/rawframe/"}),
             (r"/stats", tornado.web.RedirectHandler, {"url": "/stats/"}),
             (r"/settings", tornado.web.RedirectHandler, {"url": "/settings/"}),
             (r"/dashboard/(.*)", tornado.web.StaticFileHandler, {"path": vue_path, "default_filename": "index.html"}),
             (r"/nodes/(.*)", tornado.web.StaticFileHandler, {"path": vue_path, "default_filename": "index.html"}),
+            (r"/devs/(.*)", tornado.web.StaticFileHandler, {"path": vue_path, "default_filename": "index.html"}),
             (r"/rawframe/(.*)", tornado.web.StaticFileHandler, {"path": vue_path, "default_filename": "index.html"}),
             (r"/stats/(.*)", tornado.web.StaticFileHandler, {"path": vue_path, "default_filename": "index.html"}),
             (r"/settings/(.*)", tornado.web.StaticFileHandler, {"path": vue_path, "default_filename": "index.html"}),

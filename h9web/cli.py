@@ -3,6 +3,7 @@ import logging
 import struct
 import weakref
 import tornado.web
+import tornado.websocket
 import pty
 import fcntl
 import os
@@ -50,22 +51,57 @@ class CliWSHandler(tornado.websocket.WebSocketHandler):
         worker.encoding = 'utf-8'
         return worker
 
+    # h9cli exits when it loses its connection to h9d - it is restarted after these delays [s],
+    # the sequence starts over once h9cli has been running for STABLE_RUN seconds
+    RESTART_DELAYS = (1, 2, 5, 10)
+    STABLE_RUN = 10
+
     def open(self):
         self.src_addr = self.get_client_addr()
         logging.info('Connected from {}:{}'.format(*self.src_addr))
+        self.set_nodelay(True)
+
+        self.client_gone = False
+        self.restarts = 0
+        self.restart_handle = None
+        self.started_at = 0
+        self.start_cli()
+
+    def start_cli(self):
+        self.restart_handle = None
+        if self.client_gone:
+            return
 
         worker = self.spawn_cli()
-        if worker:
-            self.set_nodelay(True)
-            worker.set_handler(self)
-            self.worker_ref = weakref.ref(worker)
-            self.loop.add_handler(worker.fd, worker, IOLoop.READ)
-        else:
-            self.close(reason='Websocket authentication failed.')
+        worker.set_handler(self)
+        self.worker_ref = weakref.ref(worker)
+        self.worker = worker  # keep it alive while it runs
+        self.started_at = self.loop.time()
+        self.loop.add_handler(worker.fd, worker, IOLoop.READ)
+
+    def on_cli_exit(self, reason):
+        """Called by the worker once the h9cli process has ended."""
+        self.worker = None
+        if self.client_gone:
+            return
+
+        if self.loop.time() - self.started_at >= self.STABLE_RUN:
+            self.restarts = 0
+        delay = self.RESTART_DELAYS[min(self.restarts, len(self.RESTART_DELAYS) - 1)]
+        self.restarts += 1
+
+        try:
+            self.write_message('\r\n\x1b[33m[h9cli exited ({}) - restarting in {} s]\x1b[0m\r\n'.format(reason, delay),
+                               binary=True)
+        except tornado.websocket.WebSocketClosedError:
+            return
+        self.restart_handle = self.loop.call_later(delay, self.start_cli)
 
     def on_message(self, message):
         logging.debug('{!r} from {}:{}'.format(message, *self.src_addr))
-        worker = self.worker_ref()
+        worker = self.worker_ref() if self.worker_ref else None
+        if not worker or worker.closed:
+            return  # h9cli is being restarted
         worker.data_to_dst.append(message)
         worker.on_write()
         # try:
@@ -90,6 +126,11 @@ class CliWSHandler(tornado.websocket.WebSocketHandler):
         logging.info('Disconnected from {}:{}'.format(*self.src_addr))
         if not self.close_reason:
             self.close_reason = 'client disconnected'
+
+        self.client_gone = True
+        if self.restart_handle:
+            self.loop.remove_timeout(self.restart_handle)
+            self.restart_handle = None
 
         worker = self.worker_ref() if self.worker_ref else None
         if worker:

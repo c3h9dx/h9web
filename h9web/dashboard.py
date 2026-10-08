@@ -13,7 +13,7 @@ class Dashboard(APIHandler):
 
     GRID_COLS = 12
     TILE_W = 4
-    TILE_H = 5
+    TILE_H = 6
     LAYOUT_KEYS = ("i", "x", "y", "w", "h")
 
     _layout = None  # cached content of dashboard_file
